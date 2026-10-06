@@ -1,0 +1,84 @@
+name: macOS checks and release
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.20.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Set release version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const version = process.env.RELEASE_TAG;
+          if (!/^v\d+\.\d+\.\d+$/.test(version)) throw new Error('Use a release tag such as v0.1.0');
+          const config = JSON.parse(fs.readFileSync('wails.json', 'utf8'));
+          config.info.productVersion = version.slice(1);
+          fs.writeFileSync('wails.json', JSON.stringify(config, null, 2) + '\n');
+          JS
+      - name: Build universal app and generate frontend bindings
+        env:
+          RELEASE_REPOSITORY: ${{ github.repository }}
+        run: go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build -platform darwin/universal -trimpath -ldflags "-X main.releaseRepository=$RELEASE_REPOSITORY"
+      - name: Check
+        run: |
+          npm --prefix frontend test
+          go test ./...
+          go vet ./...
+      - name: Package release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: ./scripts/package-macos.sh "$RELEASE_TAG"
+      - uses: actions/upload-artifact@v4
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: macos-release
+          path: build/release/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-release
+          path: release
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cat > notes.md <<'NOTES'
+          macOS release for Apple Silicon and Intel Macs.
+
+          This app is ad hoc signed, without an Apple Developer ID or notarization. macOS may block its first launch. If you trust this download, attempt to open it, then use System Settings → Privacy & Security → Open Anyway.
+
+          Extract the ZIP and run ./install.sh ./Midwing.app from the extracted directory to install both the desktop app and CLI. See INSTALL.md in the archive for details.
+          NOTES
+          gh release create "$RELEASE_TAG" release/* --verify-tag --draft --title "Midwing $RELEASE_TAG" --notes-file notes.md
