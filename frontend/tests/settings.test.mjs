@@ -455,18 +455,19 @@ test('empty service library offers creation and recovers after adding or deletin
  assert.equal(d.querySelector('#connection-count').textContent,'0 connected');
  assert.equal(d.querySelector('#services').children.length,0);
  assert.equal(d.querySelector('#service-content').hidden,true);
- assert.equal(d.querySelector('#empty-services').hidden,false);
- d.querySelector('#add-service').click();
  assert.equal(d.querySelector('#custom').hidden,false);
- assert.equal(d.querySelector('#empty-services').hidden,true);
+ assert.equal(d.querySelectorAll('#custom-endpoints .endpoint-row').length,1);
+ assert.equal(d.querySelector('#custom-login input').disabled,true);
+ d.querySelector('#cancel-custom').click();
+ assert.equal(d.querySelector('#custom').hidden,false);
  h.setState({services:[custom],connections:[]}); h.emit(); await settle(); await settle();
  d.querySelector('#services button').click();
  assert.equal(d.querySelector('#service-content').hidden,false);
- assert.equal(d.querySelector('#empty-services').hidden,true);
+ assert.equal(d.querySelector('#custom').hidden,true);
  assert.equal(d.querySelector('#service-name').textContent,'New Service');
  h.setState({services:[],connections:[]}); h.emit(); await settle(); await settle();
  assert.equal(d.querySelector('#service-content').hidden,true);
- assert.equal(d.querySelector('#empty-services').hidden,false);
+ assert.equal(d.querySelector('#custom').hidden,false);
 });
 
 test('update notice links to the release, preserves offline notices, and avoids overlapping checks', async t => {

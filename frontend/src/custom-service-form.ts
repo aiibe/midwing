@@ -77,5 +77,7 @@ export function setupCustomServiceForm({isBusy, setBusy, selectService, showTab,
         finally { controls.forEach(control => control.disabled = false); syncCustomAuth(); setBusy(false); }
     });
 
+    addEndpointRow();
+    syncCustomAuth();
     return openCustomForm;
 }

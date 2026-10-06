@@ -110,8 +110,9 @@ function renderService(preserveEdits = false) {
     updatePermissionCount();
 }
 function syncServiceVisibility(custom = !document.getElementById('custom')!.hidden) {
+    custom = custom || !services.length;
+    document.getElementById('custom')!.hidden = !custom;
     document.getElementById('service-content')!.hidden = custom || !services.length;
-    document.getElementById('empty-services')!.hidden = custom || !!services.length;
 }
 function renderServiceLibrary() {
     const connectedServices = new Set(connections.map(connection => connection.service));
