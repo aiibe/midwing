@@ -88,7 +88,7 @@ Omitting `methods` means GET only. This definition enables GET and POST; POST ac
 
 CLI definitions use `"Bearer "` with a trailing space. Enter credentials in the desktop app after creation.
 
-Edit permission descriptions in the app or with `midwing services update service.json`. Other definition changes require deleting and recreating the service. **Disconnect** removes its saved connection; **Delete service** also removes the custom definition.
+Edit permission descriptions in the app or with `midwing services update service.json`. Other definition changes require deleting and recreating the service. Use `midwing services delete my-service` or **Delete service** in the app to remove a custom definition, its connection, and saved credential. **Disconnect** removes only the connection and credential.
 
 ## Under the wing
 

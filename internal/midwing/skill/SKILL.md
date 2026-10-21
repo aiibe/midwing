@@ -14,4 +14,5 @@ For requested custom service setup:
 
 - Use documented API contracts; ask for missing details. Definitions contain no credentials. Inspect full configuration only when needed.
 - Validate definitions before creating or updating services. Existing services support endpoint description updates only.
+- Use `midwing services delete ID` when asked to remove a custom service. This also removes its connection and saved credential; report any cleanup warning.
 - Ask the user to connect and grant permissions in the desktop app, then inspect endpoint status before calling the service.

@@ -4,11 +4,13 @@
 
 ### Added
 
+- `midwing services delete ID` to remove a custom service, its connection, and saved credential.
 - Release script that versions the changelog and app, then creates a commit and tag.
 - Draft GitHub release notes from the changelog, with installation instructions.
 
 ### Changed
 
+- Added an agent reminder to review, publish, and verify each new GitHub release.
 - Updated CI to Node.js 24.22.1 LTS and GitHub Actions that use the Node 24 runtime.
 
 ## [0.1.2](https://github.com/aiibe/midwing/releases/tag/v0.1.2) — 2026-10-21

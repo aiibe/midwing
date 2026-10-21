@@ -19,6 +19,7 @@ midwing services schema              Show definition schema and examples
 midwing services validate FILE|-     Validate without saving
 midwing services create FILE|-       Create a custom service
 midwing services update FILE|-       Update endpoint descriptions
+midwing services delete ID           Delete a custom service and its connection
 midwing get SERVICE PATH             Call an enabled GET endpoint
 midwing post SERVICE PATH JSON       Call an enabled POST endpoint
 Use --help after a command for details.`
@@ -29,6 +30,7 @@ midwing services schema
 midwing services validate FILE|-
 midwing services create FILE|-
 midwing services update FILE|-
+midwing services delete ID
 Use - to read one JSON definition from stdin. Configure credentials in the desktop app.`
 
 type serviceSummary struct {
@@ -142,6 +144,10 @@ func runServicesCLI(args []string, store *midwing.Store, in io.Reader, out io.Wr
 			_, err := fmt.Fprintln(out, "midwing services schema\nReturns a JSON Schema, input defaults, constraints, and token/password examples.")
 			return err
 		}
+		if len(args) == 2 && args[0] == "delete" {
+			_, err := fmt.Fprintln(out, "midwing services delete ID\nDelete a custom service, its saved connection, and its credential. Returns JSON; a warning means credential cleanup is pending and will retry on the next connection save, disconnect, or service deletion.")
+			return err
+		}
 		if len(args) == 2 {
 			_, err := fmt.Fprintln(out, "midwing services ID [--config]\nShow endpoints with enabled status. --config includes the full definition and permissions.")
 			return err
@@ -150,6 +156,21 @@ func runServicesCLI(args []string, store *midwing.Store, in io.Reader, out io.Wr
 	}
 	if len(args) == 1 && args[0] == "schema" {
 		return encode(serviceSchema())
+	}
+	// Preserve discovery of an existing service named delete via --config.
+	if len(args) > 0 && args[0] == "delete" && !(len(args) == 2 && args[1] == "--config") {
+		if len(args) != 2 || args[1] == "" || strings.HasPrefix(args[1], "-") {
+			return errors.New("usage: midwing services delete ID; run midwing services delete --help")
+		}
+		result, err := changeResult(store.DeleteCustomService(args[1]))
+		if err != nil {
+			return err
+		}
+		return encode(struct {
+			Deleted bool   `json:"deleted"`
+			ID      string `json:"id"`
+			midwing.ChangeResult
+		}{true, args[1], result})
 	}
 	if len(args) > 0 && (args[0] == "create" || args[0] == "validate" || args[0] == "update") {
 		definition, err := readServiceDefinition(args[1:], in)
