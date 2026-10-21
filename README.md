@@ -93,7 +93,7 @@ Use `midwing services update service.json` with a full definition:
 
 - Local app and CLI, with no background service or hosted backend.
 - Requests require endpoint and connection permissions, use fixed HTTPS destinations, disable redirects, and time out after 30 seconds.
-- JSON responses are limited to 8 MiB (1 MiB for authentication).
+- Responses are limited to 8 MiB (1 MiB for authentication). Use `midwing post SERVICE PATH JSON --output FILE` to save binary responses; existing files are never overwritten.
 - Tokens stay in the OS keychain; settings and activity live under `midwing/` in the OS user config directory. Activity excludes query values and request/response bodies.
 - Processes with unrestricted access as your OS user can still access the credential store.
 

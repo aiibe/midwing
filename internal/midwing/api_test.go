@@ -1,9 +1,11 @@
 package midwing
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -85,6 +87,9 @@ func TestResponseAndRedirect(t *testing.T) {
 			t.Fatal(e)
 		}
 		c := Client{Store: s, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+			if r.Header.Get("Accept") != "application/json" {
+				t.Fatal("JSON request must accept JSON responses")
+			}
 			return &http.Response{StatusCode: tc.status, Header: http.Header{"Location": []string{"https://evil.test"}}, Body: ioBody(tc.body)}, nil
 		})}}
 		result, e := c.Call(context.Background(), "sample-api", "GET", "/profile?page=1")
@@ -94,6 +99,13 @@ func TestResponseAndRedirect(t *testing.T) {
 		history, e := s.History()
 		if e != nil || len(history) != 1 {
 			t.Fatal(e)
+		}
+		wantOutcome := "success"
+		if tc.wantError {
+			wantOutcome = "failed"
+		}
+		if history[0].Outcome != wantOutcome {
+			t.Fatalf("body %q: outcome = %q, want %q", tc.body, history[0].Outcome, wantOutcome)
 		}
 		b, _ := json.Marshal(history)
 		if strings.Contains(string(b), "secret-token") || strings.Contains(string(b), "page=") {
@@ -234,5 +246,60 @@ func TestPOSTOnlyEndpointRejectsGET(t *testing.T) {
 	permission, _, err := service.allowed("POST", "/items")
 	if err != nil || permission != "endpoint-1-post" {
 		t.Fatalf("POST permission = %q, error = %v", permission, err)
+	}
+}
+
+func TestRawPOSTResponses(t *testing.T) {
+	for _, tc := range []struct {
+		name, body string
+		status     int
+		wantError  bool
+	}{
+		{"binary", "RIFF\x00\xffaudio", 200, false},
+		{"empty", "", 204, false},
+		{"JSON", `{"value":"safe"}`, 200, false},
+		{"raw credential", "RIFF\x00secret-token\xff", 200, true},
+		{"malformed JSON credential", `{"value":"secret-token`, 200, true},
+		{"escaped JSON credential", `{"value":"secret\u002dtoken","value":"safe"}`, 200, true},
+		{"unauthorized", "secret-token", 401, true},
+		{"limit", strings.Repeat("a", 8*1024*1024), 200, false},
+		{"oversized", strings.Repeat("a", 8*1024*1024+1), 200, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := testStore(t)
+			d := tokenDefinition()
+			d.Endpoints = []CustomEndpoint{{Path: "/audio", Methods: []string{"POST"}}}
+			if err := store.CreateCustomService(d); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1-post"}); err != nil {
+				t.Fatal(err)
+			}
+			client := Client{Store: store, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+				body, err := io.ReadAll(r.Body)
+				if err != nil || string(body) != "{}" || r.Method != "POST" || r.Header.Get("X-API-Key") != "secret-token" || r.Header.Get("Accept") != "*/*" {
+					t.Fatal("incorrect authenticated POST request")
+				}
+				return &http.Response{StatusCode: tc.status, Body: ioBody(tc.body)}, nil
+			})}}
+			var out bytes.Buffer
+			err := client.CallWithBodyTo(context.Background(), d.ID, "/audio", json.RawMessage(`{}`), &out)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			wantOutcome := "success"
+			if tc.wantError {
+				wantOutcome = "failed"
+				if out.Len() != 0 {
+					t.Fatal("failed response reached output")
+				}
+			} else if out.String() != tc.body {
+				t.Fatal("response bytes changed")
+			}
+			history, err := store.History()
+			if err != nil || len(history) != 1 || history[0].Outcome != wantOutcome {
+				t.Fatalf("incorrect history: %+v (%v)", history, err)
+			}
+		})
 	}
 }

@@ -24,6 +24,30 @@ func (c *Client) Call(ctx context.Context, service, method, path string) (json.R
 
 // CallWithBody makes an authorized JSON API request. Request bodies are accepted only for POST.
 func (c *Client) CallWithBody(ctx context.Context, service, method, path string, requestBody json.RawMessage) (json.RawMessage, error) {
+	response, err := c.call(ctx, service, method, path, requestBody, true)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(response), nil
+}
+
+// CallWithBodyTo sends an authorized JSON POST and writes its successful response bytes to out.
+func (c *Client) CallWithBodyTo(ctx context.Context, service, path string, requestBody json.RawMessage, out io.Writer) error {
+	if out == nil {
+		return errors.New("output writer is required")
+	}
+	response, err := c.call(ctx, service, "POST", path, requestBody, false)
+	if err != nil {
+		return err
+	}
+	n, err := out.Write(response)
+	if err == nil && n != len(response) {
+		return io.ErrShortWrite
+	}
+	return err
+}
+
+func (c *Client) call(ctx context.Context, service, method, path string, requestBody json.RawMessage, requireJSON bool) ([]byte, error) {
 	method = strings.ToUpper(method)
 	switch method {
 	case "GET":
@@ -50,13 +74,21 @@ func (c *Client) CallWithBody(ctx context.Context, service, method, path string,
 		return nil, e
 	}
 	a := Activity{Time: time.Now().UTC(), Operation: service + " " + method + " " + operation, Outcome: "failed"}
-	result, callErr := c.execute(ctx, s, state.Connections, permission, method, path, requestBody, &a)
+	result, callErr := c.execute(ctx, s, state.Connections, permission, method, path, requestBody, requireJSON, &a)
+	if callErr == nil && requireJSON && !json.Valid(result) {
+		result = nil
+		callErr = errors.New("service returned invalid JSON")
+	}
+	if callErr == nil {
+		a.Outcome = "success"
+	}
 	if e = c.Store.Record(a); e != nil {
 		return nil, errors.Join(callErr, errors.New("could not record activity"))
 	}
 	return result, callErr
 }
-func (c *Client) execute(ctx context.Context, s Service, connections []Connection, permission, method, path string, requestBody json.RawMessage, a *Activity) (json.RawMessage, error) {
+
+func (c *Client) execute(ctx context.Context, s Service, connections []Connection, permission, method, path string, requestBody json.RawMessage, requireJSON bool, a *Activity) ([]byte, error) {
 	var conn *Connection
 	for i := range connections {
 		if connections[i].Service == s.ID {
@@ -99,6 +131,9 @@ func (c *Client) execute(ctx context.Context, s Service, connections []Connectio
 	if e != nil {
 		return nil, e
 	}
+	if !requireJSON {
+		req.Header.Set("Accept", "*/*")
+	}
 	resp, e := c.httpClient().Do(req)
 	if e != nil {
 		return nil, errors.New("service request failed")
@@ -111,15 +146,19 @@ func (c *Client) execute(ctx context.Context, s Service, connections []Connectio
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("%s returned HTTP %d", s.Name, resp.StatusCode)
 	}
-	body, e := readJSON(resp, 8*1024*1024)
+	body, e := readResponse(resp, 8*1024*1024)
 	if e != nil {
 		return nil, e
 	}
-	if responseContainsSecret(body, token, previous) {
+	for _, secret := range []string{token, previous} {
+		if secret != "" && bytes.Contains(body, []byte(secret)) {
+			return nil, errors.New("response contains credential; output suppressed")
+		}
+	}
+	if json.Valid(body) && responseContainsSecret(body, token, previous) {
 		return nil, errors.New("response contains credential; output suppressed")
 	}
-	a.Outcome = "success"
-	return json.RawMessage(body), nil
+	return body, nil
 }
 
 // Inspect every decoded string, including object keys and duplicate-key values.

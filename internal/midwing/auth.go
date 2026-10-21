@@ -52,15 +52,23 @@ func (s Service) request(ctx context.Context, method, path string, body io.Reade
 	return req, nil
 }
 func readJSON(resp *http.Response, limit int64) ([]byte, error) {
+	body, e := readResponse(resp, limit)
+	if e != nil {
+		return nil, e
+	}
+	if !json.Valid(body) {
+		return nil, errors.New("service returned invalid JSON")
+	}
+	return body, nil
+}
+
+func readResponse(resp *http.Response, limit int64) ([]byte, error) {
 	body, e := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if e != nil {
 		return nil, errors.New("could not read service response")
 	}
 	if int64(len(body)) > limit {
 		return nil, errors.New("service response exceeds size limit")
-	}
-	if !json.Valid(body) {
-		return nil, errors.New("service returned invalid JSON")
 	}
 	return body, nil
 }

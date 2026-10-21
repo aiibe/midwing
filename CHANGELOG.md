@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `midwing post SERVICE PATH JSON --output FILE` accepts any response type and saves up to 8 MiB to a private file without overwriting existing files. Failed requests remove the output file, and credential checks cover both raw bytes and decoded JSON strings.
+
 ## [0.2.0](https://github.com/aiibe/midwing/releases/tag/v0.2.0) — 2026-10-21
 
 ### Added
