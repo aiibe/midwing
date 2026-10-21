@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+
+- CLI setup in the macOS app installs and removes a per-user command link, recognizes working PKG links, and offers repair after moving the app. Unrelated commands are preserved, with terminal PATH and migration guidance.
+
+### Changed
+
+- Distribute macOS releases as signed, notarized universal DMGs with drag-and-drop installation. CLI installation is now an explicit setup step; existing connections and credentials are retained. Historical PKG and ZIP assets and release instructions remain available.
+
+### Fixed
+
+- Preserve original CLI links when setup fails on macOS, and show the correct PATH command for working legacy PKG links.
+
 ## [0.5.2](https://github.com/aiibe/midwing/releases/tag/v0.5.2) — 2026-10-22
 
 ### Fixed

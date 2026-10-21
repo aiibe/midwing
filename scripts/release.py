@@ -39,7 +39,7 @@ def installation_notes(version):
             "Extract the ZIP and run `./install.sh ./Midwing.app` from the extracted directory "
             "to install both the desktop app and CLI. See INSTALL.md in the archive for details."
         )
-    else:
+    elif version_parts(version) < (0, 6, 0):
         notice = (
             "This app is signed with an Apple Developer ID and notarized by Apple. "
             "macOS may ask you to confirm opening an app downloaded from the internet."
@@ -50,6 +50,22 @@ def installation_notes(version):
             "Open Midwing from Applications to configure connections before using the CLI. "
             "When updating from the old script installer, remove `~/Applications/Midwing.app` "
             "and `~/.local/bin/midwing` to avoid using the old version; connections are preserved."
+        )
+    else:
+        notice = (
+            "This app and disk image are signed with an Apple Developer ID and notarized by Apple. "
+            "macOS may ask you to confirm opening an app downloaded from the internet."
+        )
+        install_steps = (
+            "Open the DMG, drag Midwing to Applications, eject the image, and launch the installed app. "
+            "Use **CLI setup → Install CLI** to create `~/.local/bin/midwing`; "
+            "verify `type -a midwing` and `midwing --help` in a fresh terminal. "
+            "If needed, add `~/.local/bin` to your shell PATH and restart terminals and coding agents. "
+            "A working `/usr/local/bin/midwing` from a PKG install is recognized without a duplicate link. "
+            "Quit Midwing before replacing the app; connections are preserved. Replacing a root-owned "
+            "PKG installation in `/Applications` can still require administrator approval. "
+            "See [the installation guide](https://github.com/aiibe/midwing/blob/main/docs/INSTALL-macos.md) "
+            "for migration, PATH, and removal."
         )
     return INSTALL_NOTES.format(signing_notice=notice, install_steps=install_steps)
 

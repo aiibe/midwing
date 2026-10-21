@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-# Sign and notarize a universal app and its installer package.
+# Sign and notarize a universal app and its disk image.
 if [ "$#" -ne 1 ] || ! printf '%s\n' "$1" | LC_ALL=C grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
   echo 'Usage: ./scripts/package-macos.sh v0.1.0' >&2
   exit 1
@@ -28,7 +28,6 @@ signing_identity() {
   esac
 }
 SIGNING_IDENTITY=$(signing_identity 'Developer ID Application' SIGNING_IDENTITY "${SIGNING_IDENTITY:-}")
-INSTALLER_SIGNING_IDENTITY=$(signing_identity 'Developer ID Installer' INSTALLER_SIGNING_IDENTITY "${INSTALLER_SIGNING_IDENTITY:-}")
 NOTARY_PROFILE=${NOTARY_PROFILE:-midwing-notary}
 cd "$(dirname "$0")/.."
 source_app='build/bin/midwing.app'
@@ -42,11 +41,11 @@ mkdir -p "$release_dir"
 stage_dir=$(mktemp -d)
 trap 'rm -rf "$stage_dir"' EXIT
 trap 'exit 1' HUP INT TERM
-payload="$stage_dir/payload"
-mkdir -p "$payload/Applications" "$payload/usr/local/bin"
-app="$payload/Applications/Midwing.app"
-cp -R "$source_app" "$app"
-ln -s /Applications/Midwing.app/Contents/MacOS/midwing "$payload/usr/local/bin/midwing"
+payload="$stage_dir/image"
+mkdir -p "$payload"
+app="$payload/Midwing.app"
+ditto "$source_app" "$app"
+ln -s /Applications "$payload/Applications"
 
 notarize() {
   submission=$1
@@ -78,16 +77,15 @@ codesign --verify --deep --strict \
 ditto -c -k --sequesterRsrc --keepParent "$app" "$stage_dir/notarize.zip"
 notarize "$stage_dir/notarize.zip" "$app" "$@"
 spctl --assess --type execute --verbose=2 "$app"
-pkgbuild --root "$payload" --identifier com.wails.midwing.pkg \
-  --version "${release_tag#v}" --install-location / --ownership recommended \
-  --component-plist scripts/macos-installer/components.plist \
-  --scripts scripts/macos-installer/hooks "$stage_dir/midwing-component.pkg"
-archive="midwing-$release_tag-macos-universal.pkg"
-productbuild --distribution scripts/macos-installer/Distribution.xml \
-  --package-path "$stage_dir" --sign "$INSTALLER_SIGNING_IDENTITY" --timestamp "$@" "$stage_dir/$archive"
-pkgutil --check-signature "$stage_dir/$archive"
+archive="midwing-$release_tag-macos-universal.dmg"
+hdiutil create -volname Midwing -srcfolder "$payload" -format UDZO "$stage_dir/$archive"
+codesign --force --timestamp --sign "$SIGNING_IDENTITY" \
+  --identifier com.wails.midwing.dmg "$@" "$stage_dir/$archive"
+codesign --verify --strict \
+  -R '=anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$stage_dir/$archive"
 notarize "$stage_dir/$archive" "$stage_dir/$archive" "$@"
-spctl --assess --type install --verbose=2 "$stage_dir/$archive"
+hdiutil verify "$stage_dir/$archive"
+spctl --assess --type open --context context:primary-signature --verbose=2 "$stage_dir/$archive"
 (cd "$stage_dir" && shasum -a 256 "$archive" > "$archive.sha256")
 mv "$stage_dir/$archive" "$stage_dir/$archive.sha256" "$release_dir/"
 echo "Packaged $release_dir/$archive"

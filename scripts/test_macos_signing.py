@@ -50,11 +50,8 @@ class NativeSigningTests(unittest.TestCase):
             env = dict(
                 os.environ, PATH=f'{tools}:{os.environ["PATH"]}',
                 RUNNER_TEMP=str(root), MACOS_CERTIFICATE_P12=certificate,
-                MACOS_INSTALLER_CERTIFICATE_P12=certificate,
                 MACOS_CERTIFICATE_PASSWORD='test-export-password',
-                MACOS_INSTALLER_CERTIFICATE_PASSWORD='test-export-password',
                 SIGNING_IDENTITY='Developer ID Application: Test',
-                INSTALLER_SIGNING_IDENTITY='Developer ID Installer: Test',
                 APPLE_ID='test@example.com', APPLE_TEAM_ID='TEST',
                 APPLE_APP_PASSWORD='test-notary-password',
             )

@@ -1,3 +1,4 @@
+import { setupCLI } from './cli-setup';
 import { setupUpdates } from './updates';
 import template from './template.html?raw';
 import { createSettingsRefresh } from './settings-refresh';
@@ -244,7 +245,7 @@ document.querySelector('#confirm-delete')!.addEventListener('click', async () =>
 });
 function showTab(tab: string, refresh = true) {
     const activeTab = tab === 'custom' ? 'connections' : tab;
-    for (const id of ['connections', 'activity']) document.getElementById(id)!.hidden = id !== activeTab;
+    for (const id of ['connections', 'activity', 'cli-setup']) document.getElementById(id)!.hidden = id !== activeTab;
     document.getElementById('custom')!.hidden = tab !== 'custom';
     syncServiceVisibility(tab === 'custom');
     document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(el => el.classList.toggle('selected', el.dataset.tab === activeTab));
@@ -267,3 +268,4 @@ void load().catch(e => message(String(e), true));
 
 
 setupUpdates();
+setupCLI();

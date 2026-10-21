@@ -10,11 +10,11 @@ Connect your APIs, choose which requests your coding agent can make, and keep to
 
 ## Download and install on macOS
 
-Requires macOS 13 or newer. Download the universal macOS **PKG** from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), open it, and follow the installer. Administrator approval is required; no terminal commands are needed.
+Requires macOS 13 or newer. Starting with v0.6.0, download the universal macOS **DMG** from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), drag Midwing to Applications, eject the image, and launch the installed app.
 
-The signed and notarized package installs both the app and CLI. Open Midwing from Applications to configure connections before using the CLI.
+The app and image are signed and notarized. Open **CLI setup → Install CLI** to create `~/.local/bin/midwing`, then verify `type -a midwing` and `midwing --help` in a fresh terminal. Add `~/.local/bin` to your shell PATH if needed and restart coding agents. A working CLI link from a PKG install is recognized without a duplicate.
 
-To update, close Midwing and open the new PKG; connections are preserved. See the [installation guide](docs/INSTALL-macos.md) for install locations, migration from older releases, and checksum verification.
+To update, quit Midwing and replace the installed app; connections are preserved. Copying into `/Applications` can require administrator approval, especially when replacing a PKG install. See the [installation guide](docs/INSTALL-macos.md) for PATH, migration, checksums, and removal. Historical v0.5.x releases use PKG installers.
 
 Release builds check GitHub for updates on launch, then daily while running, without sending credentials. Failed checks retry after an hour. Updates are installed manually. See the [changelog](CHANGELOG.md) for changes.
 

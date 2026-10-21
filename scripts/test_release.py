@@ -31,11 +31,22 @@ class ChangelogTests(unittest.TestCase):
         for version in ["0.1.0", "0.4.0"]:
             self.assertIn("ad hoc signed", release.installation_notes(version))
             self.assertIn("Extract the ZIP", release.installation_notes(version))
-        for version in ["0.4.1", "0.5.0", "1.0.0"]:
+        for version in ["0.4.1", "0.5.0", "0.5.2", "0.5.99"]:
             self.assertIn("notarized by Apple", release.installation_notes(version))
             self.assertIn("Open the PKG", release.installation_notes(version))
             self.assertIn("/usr/local/bin", release.installation_notes(version))
             self.assertNotIn("Open Anyway", release.installation_notes(version))
+
+    def test_dmg_boundary_and_cli_instructions(self):
+        for version in ["0.6.0", "0.6.1", "1.0.0"]:
+            notes = release.installation_notes(version)
+            self.assertIn("Open the DMG", notes)
+            self.assertIn("notarized by Apple", notes)
+            self.assertIn("CLI setup → Install CLI", notes)
+            self.assertIn("~/.local/bin", notes)
+            self.assertIn("fresh terminal", notes)
+            self.assertNotIn("Open the PKG", notes)
+            self.assertNotIn("Open Anyway", notes)
 
     def test_prepare_preserves_history_and_extracts_only_requested_release(self):
         updated = release.prepare_changelog(CHANGELOG, "0.2.0", "2026-10-21")

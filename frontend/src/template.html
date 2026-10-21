@@ -6,14 +6,39 @@
 </button>
 <button data-tab="activity" aria-label="Activity">◷ <span>Activity</span>
 </button>
+<button data-tab="cli-setup" aria-label="CLI setup">⌘ <span>CLI setup</span></button>
 </nav>
 <div class="aside-bottom">
 <button id="update-notice" type="button" hidden aria-label="Download the latest Midwing release"></button>
+<button id="cli-notice" type="button" data-tab="cli-setup" hidden></button>
 <span id="app-version" hidden></span>
 
 </div>
 </aside>
 <main>
+<section id="cli-setup" hidden>
+<h1>CLI setup</h1>
+<p id="cli-status" role="status" aria-live="polite">Open the desktop app to set up the CLI.</p>
+<p id="cli-warning" class="error" hidden></p>
+<div id="cli-details" hidden>
+<p>The CLI uses this app's executable and works after the app closes.</p>
+<p>Destination: <code id="cli-destination"></code><br>App executable: <code id="cli-target"></code></p>
+<p id="cli-existing-row" hidden>Current user link: <code id="cli-existing"></code></p>
+<p id="cli-change-explanation" hidden>Repair replaces only a verified Midwing user link at the destination above. Remove CLI removes that link and keeps the app and connections.</p>
+<div class="cli-actions">
+<button type="button" class="primary" data-cli-action="install" hidden>Install CLI</button>
+<button type="button" class="primary" data-cli-action="repair" hidden>Repair CLI link</button>
+<button type="button" data-cli-action="remove" class="secondary" hidden>Remove CLI</button>
+</div>
+<h2>Verify in a fresh terminal</h2>
+<p>Run <code>type -a midwing</code> and <code>midwing --help</code>. Check that the command uses this app. An older installation may appear first.</p>
+<p>If the command is missing, copy this line into your shell configuration (<code>~/.zprofile</code> for the default login zsh) to add its directory to PATH, then open a new terminal:</p>
+<pre><code id="cli-path"></code></pre>
+<p>For fish, add the command's directory with <code>fish_add_path</code>. Restart coding agents and their host apps after changing PATH; some agents need an explicit executable path.</p>
+</div>
+<button type="button" class="secondary" id="cli-refresh">Refresh CLI status</button>
+<p id="cli-error" class="error" role="alert"></p>
+</section>
 
 <section id="connections">
 <div class="connections-heading">
