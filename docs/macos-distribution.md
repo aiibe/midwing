@@ -25,12 +25,13 @@ and an [app-specific password](https://account.apple.com/):
 xcrun notarytool store-credentials midwing-notary --team-id YOUR_TEAM_ID
 ```
 
-Build and package the version being released:
+Build and package the version being released (replace `VERSION`). Set the release
+repository to enable update notifications, as CI does:
 
 ```sh
 export CGO_CFLAGS="-mmacosx-version-min=13.0"
 export CGO_LDFLAGS="-mmacosx-version-min=13.0"
-go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 build -platform darwin/universal -trimpath
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 build -platform darwin/universal -trimpath -ldflags '-X main.releaseRepository=aiibe/midwing'
 ./scripts/package-macos.sh vVERSION
 ```
 

@@ -16,7 +16,7 @@ The signed and notarized package installs both the app and CLI. Open Midwing fro
 
 To update, close Midwing and open the new PKG; connections are preserved. See the [installation guide](docs/INSTALL-macos.md) for install locations, migration from older releases, and checksum verification.
 
-Release builds check GitHub for updates on launch and at most daily, without sending credentials. Updates are installed manually. See the [changelog](CHANGELOG.md) for changes.
+Release builds check GitHub for updates on launch, then daily while running, without sending credentials. Failed checks retry after an hour. Updates are installed manually. See the [changelog](CHANGELOG.md) for changes.
 
 ## Build and install from source
 
@@ -129,11 +129,11 @@ Tests need no live credentials. See [service validation](internal/midwing/custom
 
 ## Release a version
 
-Record changes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md). Use a patch for fixes or a minor for new capabilities, including during `0.x`. Commit changes, then run from a clean, up-to-date release branch (Python 3 required):
+Record changes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md). Use a patch for fixes or a minor for new capabilities, including during `0.x`. Commit changes, then run from a clean, up-to-date release branch (Python 3 required), replacing `VERSION` with the next version, without a `v` prefix:
 
 ```sh
 git fetch origin --tags
-./scripts/release.sh 0.2.0
+./scripts/release.sh VERSION
 ```
 
 The script versions nonempty changelog entries, updates `wails.json`, and creates a commit and annotated tag. The version must be newer than existing releases.
@@ -142,9 +142,9 @@ Configure the [distribution credentials](docs/macos-distribution.md) before push
 
 Review the commit and tag, then run the printed atomic push command. CI checks, signs, and notarizes the app before creating a **draft** GitHub release. Review and publish it, then verify the release is public.
 
-Preview notes and test release tooling:
+Preview notes for a version in the changelog (replace `VERSION`) and test release tooling:
 
 ```sh
-python3 scripts/release.py notes v0.1.2
+python3 scripts/release.py notes vVERSION
 python3 -m unittest discover -s scripts -p 'test_*.py'
 ```

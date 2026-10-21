@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Correct release command examples, document update-check retries, and enable update notifications in the local release build instructions.
+
 ## [0.5.0](https://github.com/aiibe/midwing/releases/tag/v0.5.0) — 2026-10-22
 
 ### Added
