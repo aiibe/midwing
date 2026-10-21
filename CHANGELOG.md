@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.4.0](https://github.com/aiibe/midwing/releases/tag/v0.4.0) — 2026-10-21
+
 ### Added
 
 - `--output FILE` for GET requests, plus `--accept TYPE` and `--max-bytes N` for GET and POST downloads.
