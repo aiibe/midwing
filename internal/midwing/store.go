@@ -47,10 +47,14 @@ func NewStore() (*Store, error) {
 }
 
 func (s *Store) locked(fn func() error) error {
+	return s.lockedFile("store.lock", fn)
+}
+
+func (s *Store) lockedFile(name string, fn func() error) error {
 	if e := os.MkdirAll(s.Dir, 0700); e != nil {
 		return e
 	}
-	l := flock.New(filepath.Join(s.Dir, "store.lock"))
+	l := flock.New(filepath.Join(s.Dir, name))
 	if e := l.Lock(); e != nil {
 		return e
 	}
@@ -92,21 +96,5 @@ func (s *Store) write(cfg Settings) error {
 	if e != nil {
 		return e
 	}
-	f, e := os.CreateTemp(s.Dir, "settings-*")
-	if e != nil {
-		return e
-	}
-	defer os.Remove(f.Name())
-	if _, e = f.Write(b); e != nil {
-		f.Close()
-		return e
-	}
-	if e = f.Sync(); e != nil {
-		f.Close()
-		return e
-	}
-	if e = f.Close(); e != nil {
-		return e
-	}
-	return os.Rename(f.Name(), filepath.Join(s.Dir, "settings.json"))
+	return s.writeFile("settings.json", b)
 }

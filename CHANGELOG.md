@@ -4,6 +4,7 @@
 
 ### Security
 
+- Limit activity logs to two 1 MiB files, bound reads of older oversized logs, and keep history access from blocking settings operations.
 - Bind connection approvals to the service definition reviewed in the app; reject stale token and password approvals after request settings change.
 - Require Go 1.27.3 or newer for patched HTTPS handling and certificate validation; CI now blocks known vulnerabilities in reachable Go code.
 - Upgrade Wails to 2.17.0 for compiler compatibility and development-server security fixes.

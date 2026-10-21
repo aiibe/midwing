@@ -111,6 +111,7 @@ Use `midwing services update service.json` with a full definition:
 - Requests require endpoint and connection permissions, use fixed HTTPS destinations, disable redirects, and time out after 30 seconds.
 - JSON responses are limited to 8 MiB (1 MiB for authentication); download limits are configurable.
 - Tokens stay in the OS keychain; settings and activity live under `midwing/` in the OS user config directory. Activity excludes query values and request/response bodies.
+- Activity keeps two log files of up to 1 MiB each and displays the latest 100 entries. Older entries are discarded automatically; activity access uses a separate lock from settings.
 - Processes with unrestricted access as your OS user can still access the credential store.
 
 ## Tinker with it
