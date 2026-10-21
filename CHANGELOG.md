@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.2.0](https://github.com/aiibe/midwing/releases/tag/v0.2.0) — 2026-10-21
+
 ### Added
 
 - Custom service updates for endpoints, methods, and query parameters. Request changes require reconnecting and reviewing permissions; description edits keep connections active.
