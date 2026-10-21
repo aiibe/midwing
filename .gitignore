@@ -9,3 +9,13 @@ v0.md
 /build/release/
 /output/
 __pycache__/
+
+# Local signing credentials and certificate requests
+*.p12
+*.pfx
+*.key
+*.pem
+*.cer
+*.certSigningRequest
+*.keychain
+*.keychain-db

@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+# Installer supplies the target volume as its third argument.
+target_volume=${3:?Missing installation target volume}
+app="${target_volume%/}/Applications/Midwing.app"
+command="${target_volume%/}/usr/local/bin/midwing"
+if [ -L "$app" ]; then
+  echo "Refusing to replace a symlink at $app." >&2
+  exit 1
+fi
+if [ -e "$app" ]; then
+  identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist" 2>/dev/null || true)
+  if [ "$identifier" != 'com.wails.midwing' ]; then
+    echo "Refusing to replace an unrelated app at $app." >&2
+    exit 1
+  fi
+fi
+if [ -e "$command" ] || [ -L "$command" ]; then
+  if [ ! -L "$command" ] || [ "$(readlink "$command")" != '/Applications/Midwing.app/Contents/MacOS/midwing' ]; then
+    echo "Refusing to replace an unrelated command at $command." >&2
+    exit 1
+  fi
+fi

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<installer-gui-script minSpecVersion="2">
+  <title>Midwing</title>
+  <options customize="never" require-scripts="false"/>
+  <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
+  <volume-check>
+    <allowed-os-versions><os-version min="13.0"/></allowed-os-versions>
+  </volume-check>
+  <choices-outline><line choice="midwing"/></choices-outline>
+  <choice id="midwing" title="Midwing" description="Install the Midwing app and command-line tool." visible="false">
+    <pkg-ref id="com.wails.midwing.pkg"/>
+  </choice>
+  <pkg-ref id="com.wails.midwing.pkg">midwing-component.pkg</pkg-ref>
+  <pkg-ref id="com.wails.midwing.pkg">
+    <must-close><app id="com.wails.midwing"/></must-close>
+  </pkg-ref>
+</installer-gui-script>

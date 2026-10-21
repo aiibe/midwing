@@ -1,10 +1,35 @@
 #!/bin/sh
 set -eu
-# Package a built universal app without Apple Developer credentials.
+# Sign and notarize a universal app and its installer package.
 if [ "$#" -ne 1 ] || ! printf '%s\n' "$1" | LC_ALL=C grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
   echo 'Usage: ./scripts/package-macos.sh v0.1.0' >&2
   exit 1
 fi
+release_tag=$1
+signing_identity() {
+  class=$1 variable=$2 identity=$3
+  if [ -z "$identity" ]; then
+    if [ -n "${NOTARY_KEYCHAIN:-}" ]; then
+      identities=$(security find-identity -v -p basic "$NOTARY_KEYCHAIN")
+    else
+      identities=$(security find-identity -v -p basic)
+    fi
+    identities=$(printf '%s\n' "$identities" | sed -n "s/.*\"\($class:.*\)\".*/\1/p")
+    count=$(printf '%s\n' "$identities" | sed '/^$/d' | wc -l | tr -d ' ')
+    if [ "$count" -ne 1 ]; then
+      echo "Expected one $class identity; found $count. Set $variable explicitly." >&2
+      exit 1
+    fi
+    identity=$identities
+  fi
+  case "$identity" in
+    "$class:"*) printf '%s\n' "$identity" ;;
+    *) echo "$variable must be a $class certificate name." >&2; exit 1 ;;
+  esac
+}
+SIGNING_IDENTITY=$(signing_identity 'Developer ID Application' SIGNING_IDENTITY "${SIGNING_IDENTITY:-}")
+INSTALLER_SIGNING_IDENTITY=$(signing_identity 'Developer ID Installer' INSTALLER_SIGNING_IDENTITY "${INSTALLER_SIGNING_IDENTITY:-}")
+NOTARY_PROFILE=${NOTARY_PROFILE:-midwing-notary}
 cd "$(dirname "$0")/.."
 source_app='build/bin/midwing.app'
 if [ ! -d "$source_app" ]; then
@@ -17,32 +42,52 @@ mkdir -p "$release_dir"
 stage_dir=$(mktemp -d)
 trap 'rm -rf "$stage_dir"' EXIT
 trap 'exit 1' HUP INT TERM
-cp -R "$source_app" "$stage_dir/Midwing.app"
-cp scripts/install.sh "$stage_dir/install.sh"
-cat > "$stage_dir/INSTALL.md" <<'NOTES'
-# Install Midwing on macOS
+payload="$stage_dir/payload"
+mkdir -p "$payload/Applications" "$payload/usr/local/bin"
+app="$payload/Applications/Midwing.app"
+cp -R "$source_app" "$app"
+ln -s /Applications/Midwing.app/Contents/MacOS/midwing "$payload/usr/local/bin/midwing"
 
-This app requires macOS 13 or newer and supports Apple Silicon and Intel Macs.
-It is ad hoc signed, without an Apple Developer ID or Apple notarization.
-Gatekeeper may block first launch.
+notarize() {
+  submission=$1
+  staple_target=$2
+  shift 2
+  xcrun notarytool submit "$submission" --keychain-profile "$NOTARY_PROFILE" "$@" \
+    --wait --timeout 30m --output-format json > "$stage_dir/notarization.json"
+  python3 - "$stage_dir/notarization.json" <<'PY'
+import json
+from pathlib import Path
+import sys
 
-From this extracted directory, run:
+result = json.loads(Path(sys.argv[1]).read_text())
+if result.get('status') != 'Accepted':
+    sys.exit('Notarization failed: ' + json.dumps(result))
+print('Apple notarization accepted: ' + result['id'])
+PY
+  xcrun stapler staple "$staple_target"
+  xcrun stapler validate "$staple_target"
+}
 
-    ./install.sh ./Midwing.app
-    open "$HOME/Applications/Midwing.app"
-
-If macOS blocks the app and you trust the download, attempt to open it, then
-use System Settings → Privacy & Security → Open Anyway.
-Apple's instructions: https://support.apple.com/102445
-
-The installer also creates ~/.local/bin/midwing. Add ~/.local/bin to your PATH
-if needed. Approve and open the desktop app before trying the CLI.
-
-Close Midwing before updating. Reinstalling preserves your connections.
-NOTES
-codesign --force --sign - "$stage_dir/Midwing.app"
-codesign --verify --deep --strict "$stage_dir/Midwing.app"
-archive="midwing-$1-macos-universal.zip"
-ditto -c -k --sequesterRsrc "$stage_dir" "$release_dir/$archive"
-(cd "$release_dir" && shasum -a 256 "$archive" > "$archive.sha256")
+# The Wails bundle contains one native executable and no nested code bundles.
+set --
+if [ -n "${NOTARY_KEYCHAIN:-}" ]; then set -- --keychain "$NOTARY_KEYCHAIN"; fi
+codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$@" "$app"
+# Restrict verification to the expected Developer ID certificate class.
+codesign --verify --deep --strict \
+  -R '=anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists' "$app"
+ditto -c -k --sequesterRsrc --keepParent "$app" "$stage_dir/notarize.zip"
+notarize "$stage_dir/notarize.zip" "$app" "$@"
+spctl --assess --type execute --verbose=2 "$app"
+pkgbuild --root "$payload" --identifier com.wails.midwing.pkg \
+  --version "${release_tag#v}" --install-location / --ownership recommended \
+  --component-plist scripts/macos-installer/components.plist \
+  --scripts scripts/macos-installer/hooks "$stage_dir/midwing-component.pkg"
+archive="midwing-$release_tag-macos-universal.pkg"
+productbuild --distribution scripts/macos-installer/Distribution.xml \
+  --package-path "$stage_dir" --sign "$INSTALLER_SIGNING_IDENTITY" --timestamp "$@" "$stage_dir/$archive"
+pkgutil --check-signature "$stage_dir/$archive"
+notarize "$stage_dir/$archive" "$stage_dir/$archive" "$@"
+spctl --assess --type install --verbose=2 "$stage_dir/$archive"
+(cd "$stage_dir" && shasum -a 256 "$archive" > "$archive.sha256")
+mv "$stage_dir/$archive" "$stage_dir/$archive.sha256" "$release_dir/"
 echo "Packaged $release_dir/$archive"

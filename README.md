@@ -10,18 +10,11 @@ Connect your APIs, choose which requests your coding agent can make, and keep to
 
 ## Download and install on macOS
 
-Requires macOS 13 or newer. Download and extract the universal macOS ZIP from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), then run:
+Requires macOS 13 or newer. Download the universal macOS **PKG** from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), open it, and follow the installer. Administrator approval is required; no terminal commands are needed.
 
-```sh
-./install.sh ./Midwing.app
-open "$HOME/Applications/Midwing.app"
-```
+The signed and notarized package installs both the app and CLI. Open Midwing from Applications to configure connections before using the CLI.
 
-Releases are ad hoc signed and not notarized. If macOS blocks a trusted download, attempt to open it, then use **System Settings → Privacy & Security → Open Anyway** ([Apple's instructions](https://support.apple.com/102445)). Open the app once before using the CLI.
-
-The installer uses `~/Applications` and `~/.local/bin`; add the latter to PATH. Override them with `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`. To update, close Midwing and rerun the installer; connections are preserved.
-
-Verify downloads with `shasum -a 256 -c midwing-vVERSION-macos-universal.zip.sha256`, using your version and the matching checksum file.
+To update, close Midwing and open the new PKG; connections are preserved. See the [installation guide](docs/INSTALL-macos.md) for install locations, migration from older releases, and checksum verification.
 
 Release builds check GitHub for updates on launch and at most daily, without sending credentials. Updates are installed manually. See the [changelog](CHANGELOG.md) for changes.
 
@@ -41,6 +34,8 @@ go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 build
 ./scripts/install.sh # macOS
 midwing
 ```
+
+The macOS source installer uses `~/Applications` and `~/.local/bin`; add the latter to PATH. Override them with `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`.
 
 On Windows and Linux, put the executable from `build/bin` on PATH. Linux also needs an unlocked Secret Service keyring.
 
@@ -143,7 +138,9 @@ git fetch origin --tags
 
 The script versions nonempty changelog entries, updates `wails.json`, and creates a commit and annotated tag. The version must be newer than existing releases.
 
-Review the commit and tag, then run the printed atomic push command. CI builds and checks the app and creates a **draft** GitHub release. Review and publish it, then verify the release is public.
+Configure the [distribution credentials](docs/macos-distribution.md) before pushing a release tag.
+
+Review the commit and tag, then run the printed atomic push command. CI checks, signs, and notarizes the app before creating a **draft** GitHub release. Review and publish it, then verify the release is public.
 
 Preview notes and test release tooling:
 

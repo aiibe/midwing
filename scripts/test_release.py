@@ -27,6 +27,16 @@ CHANGELOG = """# Changelog
 
 
 class ChangelogTests(unittest.TestCase):
+    def test_installation_notes_preserve_historical_signing_status(self):
+        for version in ["0.1.0", "0.4.0"]:
+            self.assertIn("ad hoc signed", release.installation_notes(version))
+            self.assertIn("Extract the ZIP", release.installation_notes(version))
+        for version in ["0.4.1", "0.5.0", "1.0.0"]:
+            self.assertIn("notarized by Apple", release.installation_notes(version))
+            self.assertIn("Open the PKG", release.installation_notes(version))
+            self.assertIn("/usr/local/bin", release.installation_notes(version))
+            self.assertNotIn("Open Anyway", release.installation_notes(version))
+
     def test_prepare_preserves_history_and_extracts_only_requested_release(self):
         updated = release.prepare_changelog(CHANGELOG, "0.2.0", "2026-10-21")
         self.assertIn("## Unreleased\n\n## [0.2.0]", updated)

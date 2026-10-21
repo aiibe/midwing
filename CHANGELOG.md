@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Signed and notarized macOS PKG downloads install the app in Applications and the CLI together, without terminal commands. Updates preserve connections; administrator approval is required.
+
 ### Security
 
 - Limit activity logs to two 1 MiB files, bound reads of older oversized logs, and keep history access from blocking settings operations.

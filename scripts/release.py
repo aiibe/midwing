@@ -16,9 +16,9 @@ INSTALL_NOTES = """## Installation
 
 macOS release for Apple Silicon and Intel Macs.
 
-This app is ad hoc signed, without an Apple Developer ID or notarization. macOS may block its first launch. If you trust this download, attempt to open it, then use System Settings → Privacy & Security → Open Anyway.
+{signing_notice}
 
-Extract the ZIP and run `./install.sh ./Midwing.app` from the extracted directory to install both the desktop app and CLI. See INSTALL.md in the archive for details.
+{install_steps}
 """
 
 
@@ -26,6 +26,32 @@ def version_parts(version):
     if not VERSION.fullmatch(version):
         raise ValueError("Use a version such as 0.2.0 (without a v prefix).")
     return tuple(map(int, version.split(".")))
+
+
+def installation_notes(version):
+    if version_parts(version) <= (0, 4, 0):
+        notice = (
+            "This app is ad hoc signed, without an Apple Developer ID or notarization. "
+            "macOS may block its first launch. If you trust this download, attempt to open it, "
+            "then use System Settings → Privacy & Security → Open Anyway."
+        )
+        install_steps = (
+            "Extract the ZIP and run `./install.sh ./Midwing.app` from the extracted directory "
+            "to install both the desktop app and CLI. See INSTALL.md in the archive for details."
+        )
+    else:
+        notice = (
+            "This app is signed with an Apple Developer ID and notarized by Apple. "
+            "macOS may ask you to confirm opening an app downloaded from the internet."
+        )
+        install_steps = (
+            "Open the PKG and follow the installer to install both the app in `/Applications` "
+            "and the `midwing` command in `/usr/local/bin`. Administrator approval is required. "
+            "Open Midwing from Applications to configure connections before using the CLI. "
+            "When updating from the old script installer, remove `~/Applications/Midwing.app` "
+            "and `~/.local/bin/midwing` to avoid using the old version; connections are preserved."
+        )
+    return INSTALL_NOTES.format(signing_notice=notice, install_steps=install_steps)
 
 
 def sections(text):
@@ -110,7 +136,7 @@ def main():
             if not args.tag.startswith("v"):
                 raise ValueError("Use a release tag such as v0.2.0.")
             body = release_section((ROOT / "CHANGELOG.md").read_text(), args.tag[1:])
-            print(body + "\n\n" + INSTALL_NOTES)
+            print(body + "\n\n" + installation_notes(args.tag[1:]))
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         print(f"Release failed: {error}", file=sys.stderr)
         return 1
