@@ -10,7 +10,7 @@ Connect your APIs, choose which requests your coding agent can make, and keep to
 
 ## Download and install on macOS
 
-Download and extract the universal macOS ZIP from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), then run:
+Requires macOS 13 or newer. Download and extract the universal macOS ZIP from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), then run:
 
 ```sh
 ./install.sh ./Midwing.app
@@ -27,10 +27,17 @@ Release builds check GitHub for updates on launch and at most daily, without sen
 
 ## Build and install from source
 
-Requires Go 1.24+, Node 22.20+ on the 22.x line or Node 24.12+, and the [Wails v2 native prerequisites](https://v2.wails.io/docs/gettingstarted/installation/).
+Requires Go 1.27.3+, Node 22.20+ on the 22.x line or Node 24.12+, and the [Wails v2 native prerequisites](https://v2.wails.io/docs/gettingstarted/installation/).
+
+On macOS, set the native compiler target before building or running development mode:
 
 ```sh
-go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build
+export CGO_CFLAGS="-mmacosx-version-min=13.0"
+export CGO_LDFLAGS="-mmacosx-version-min=13.0"
+```
+
+```sh
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 build
 ./scripts/install.sh # macOS
 midwing
 ```
@@ -109,7 +116,7 @@ Use `midwing services update service.json` with a full definition:
 ## Tinker with it
 
 ```sh
-go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 dev
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 dev
 ```
 
 Run checks:
@@ -119,6 +126,7 @@ npm --prefix frontend run build
 npm --prefix frontend test
 go test ./...
 go vet ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -tags production ./...
 ```
 
 Tests need no live credentials. See [service validation](internal/midwing/custom.go).

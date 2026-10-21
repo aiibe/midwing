@@ -40,13 +40,17 @@ jobs:
       - name: Build universal app and generate frontend bindings
         env:
           RELEASE_REPOSITORY: ${{ github.repository }}
-        run: go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build -platform darwin/universal -trimpath -ldflags "-X main.releaseRepository=$RELEASE_REPOSITORY"
+          CGO_CFLAGS: -mmacosx-version-min=13.0
+          CGO_LDFLAGS: -mmacosx-version-min=13.0
+        run: go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 build -platform darwin/universal -trimpath -ldflags "-X main.releaseRepository=$RELEASE_REPOSITORY"
       - name: Check
         run: |
           python3 -m unittest discover -s scripts -p 'test_*.py'
           npm --prefix frontend test
           go test ./...
           go vet ./...
+      - name: Check Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -tags production ./...
       - name: Package release
         if: startsWith(github.ref, 'refs/tags/')
         env:

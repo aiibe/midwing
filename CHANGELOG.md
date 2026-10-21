@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Security
+
+- Require Go 1.27.3 or newer for patched HTTPS handling and certificate validation; CI now blocks known vulnerabilities in reachable Go code.
+- Upgrade Wails to 2.17.0 for compiler compatibility and development-server security fixes.
+
+### Changed
+
+- Require macOS 13 or newer, matching Go 1.27; update app bundle metadata.
+
 ## [0.4.0](https://github.com/aiibe/midwing/releases/tag/v0.4.0) — 2026-10-21
 
 ### Added

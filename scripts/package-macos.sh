@@ -22,8 +22,9 @@ cp scripts/install.sh "$stage_dir/install.sh"
 cat > "$stage_dir/INSTALL.md" <<'NOTES'
 # Install Midwing on macOS
 
-This app supports Apple Silicon and Intel Macs. It is ad hoc signed, without
-an Apple Developer ID or Apple notarization. Gatekeeper may block first launch.
+This app requires macOS 13 or newer and supports Apple Silicon and Intel Macs.
+It is ad hoc signed, without an Apple Developer ID or Apple notarization.
+Gatekeeper may block first launch.
 
 From this extracted directory, run:
 
