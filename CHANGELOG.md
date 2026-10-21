@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.5.0](https://github.com/aiibe/midwing/releases/tag/v0.5.0) — 2026-10-22
+
 ### Added
 
 - Signed and notarized macOS PKG downloads install the app in Applications and the CLI together, without terminal commands. Updates preserve connections; administrator approval is required.
