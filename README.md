@@ -49,7 +49,16 @@ midwing post my-service /items '{"name":"Example"}'
 midwing get my-service /items/123
 ```
 
-The CLI returns JSON, one page per call; errors go to stderr with a nonzero exit code. Append `--help` to any command for details.
+The CLI returns JSON, one page per call. Empty successful responses print nothing. Errors go to stderr with a nonzero exit code. Append `--help` to any command for details.
+
+Save raw responses with GET or POST:
+
+```sh
+midwing get my-service /image --output image.png --accept image/png
+midwing post my-service /audio '{"text":"Hello"}' --output audio.wav --accept audio/wav --max-bytes 33554432
+```
+
+Downloads default to any media type and 8 MiB; override with `--accept TYPE` and `--max-bytes N` (requires `--output`). Responses are buffered in memory and checked for credentials. Files are private, never overwritten, and removed on failure or interruption; cleanup errors are reported.
 
 ### Introduce your agent
 
@@ -93,7 +102,7 @@ Use `midwing services update service.json` with a full definition:
 
 - Local app and CLI, with no background service or hosted backend.
 - Requests require endpoint and connection permissions, use fixed HTTPS destinations, disable redirects, and time out after 30 seconds.
-- Responses are limited to 8 MiB (1 MiB for authentication). Use `midwing post SERVICE PATH JSON --output FILE` to save binary responses; existing files are never overwritten.
+- JSON responses are limited to 8 MiB (1 MiB for authentication); download limits are configurable.
 - Tokens stay in the OS keychain; settings and activity live under `midwing/` in the OS user config directory. Activity excludes query values and request/response bodies.
 - Processes with unrestricted access as your OS user can still access the credential store.
 

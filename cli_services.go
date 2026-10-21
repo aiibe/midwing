@@ -20,9 +20,11 @@ midwing services validate FILE|-     Validate without saving
 midwing services create FILE|-       Create a custom service
 midwing services update FILE|-       Update endpoints and static headers
 midwing services delete ID           Delete a custom service and its connection
-midwing get SERVICE PATH             Call an enabled GET endpoint
-midwing post SERVICE PATH JSON       Call an enabled POST endpoint
-Use --help after a command for details.
+midwing get SERVICE PATH [--output FILE]
+                                     Call an enabled GET endpoint
+midwing post SERVICE PATH JSON [--output FILE]
+                                     Call an enabled POST endpoint
+Use --help after a command for details. Downloads also support --accept and --max-bytes.
 
 Start with midwing services, then midwing services ID to inspect connection status,
 enabled methods, paths, and queries. Call only enabled requests through Midwing.

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- `--output FILE` for GET requests, plus `--accept TYPE` and `--max-bytes N` for GET and POST downloads.
+
+### Fixed
+
+- Empty successful responses print nothing.
+- Block credentials in incomplete JSON and JSON Lines downloads, including escaped characters and invalid UTF-8.
+- Clean up failed or interrupted downloads, report cleanup errors, and record output failures accurately.
+
 ## [0.3.0](https://github.com/aiibe/midwing/releases/tag/v0.3.0) — 2026-10-21
 
 ### Added

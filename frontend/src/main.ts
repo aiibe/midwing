@@ -3,6 +3,7 @@ import template from './template.html?raw';
 import { createSettingsRefresh } from './settings-refresh';
 import { setupCustomServiceForm } from './custom-service-form';
 import { setupActivity } from './activity';
+import { setupPermissionDescriptions, permissionPath, defaultPermissionDescription } from './permission-descriptions';
 import './style.css';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import * as app from '../wailsjs/go/main/App';
@@ -37,9 +38,9 @@ let busy = false;
 let permissionsDirty = false;
 let reconnecting = false;
 document.querySelector('#permissions')!.addEventListener('change', event => { if ((event.target as HTMLInputElement).name === 'permission') { permissionsDirty = true; updatePermissionCount(); } });
-const descriptionDrafts = new Map<string, string>();
 const current = () => services.find(s => s.id === selected)!;
 const currentConnection = () => connections.find(connection => connection.service === selected);
+const addInlineDescription = setupPermissionDescriptions({isBusy: () => busy, setBusy, reloadAfterChange});
 const serviceActions = document.querySelector<HTMLDetailsElement>('#service-actions')!;
 const deleteDialog = document.querySelector<HTMLDialogElement>('#delete-confirm')!;
 function updatePermissionCount() {
@@ -68,10 +69,6 @@ function syncCredentialFields(clear = false) {
     document.querySelector('#permissions')!.classList.toggle('permissions-readonly', !editing);
     document.querySelectorAll<HTMLInputElement>('[name="permission"]').forEach(input => { input.disabled = busy || !editing; });
 }
-const permissionPath = (label: string) => label.replace(/^(GET|POST) /, '');
-const defaultPermissionDescription = (label: string) => label.startsWith('POST ')
-    ? `Submit a request to ${permissionPath(label)}`
-    : label.replace(/^GET /, 'Read ');
 function renderService(preserveEdits = false) {
     if (!preserveEdits) { permissionsDirty = false; reconnecting = false; }
     const service = current();
@@ -268,63 +265,5 @@ document.querySelector('#add-service')!.addEventListener('click', openCustomForm
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.addEventListener('click', () => showTab(button.dataset.tab!)));
 void load().catch(e => message(String(e), true));
 
-function addInlineDescription(row: HTMLDivElement, service: Service, label: string, description: string, shared: boolean) {
-    const path = permissionPath(label);
-    const key = `${service.id}:${path}`;
-    const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'permission-edit';
-    edit.textContent = 'Edit'; edit.setAttribute('aria-label', `Edit description for ${label}`);
-    const editor = document.createElement('div'); editor.className = 'permission-editor';
-    const input = document.createElement('input'); input.className = 'permission-description'; input.maxLength = 500;
-    input.placeholder = defaultPermissionDescription(label);
-    input.value = descriptionDrafts.get(key) ?? (description === input.placeholder ? '' : description);
-    input.setAttribute('aria-label', `Description for ${label}`);
-    const actions = document.createElement('div'); actions.className = 'permission-editor-actions';
-    const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = 'Save';
-    const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'secondary'; cancel.textContent = 'Cancel';
-    const error = document.createElement('p'); error.className = 'error'; error.setAttribute('role', 'alert');
-    actions.append(save, cancel); editor.append(input, actions, error);
-    if (shared) {
-        const hint = document.createElement('p');
-        hint.textContent = 'This description applies to GET and POST for this path.';
-        editor.prepend(hint);
-        edit.setAttribute('aria-label', `Edit description for GET and POST ${path}`);
-    }
-    const setEditing = (editing: boolean) => {
-        editor.hidden = !editing; edit.hidden = editing;
-        edit.setAttribute('aria-expanded', String(editing));
-        error.textContent = '';
-    };
-    setEditing(descriptionDrafts.has(key));
-    edit.addEventListener('click', () => {
-        if (busy) return;
-        descriptionDrafts.set(key, input.value);
-        setEditing(true); input.focus();
-    });
-    input.addEventListener('input', () => descriptionDrafts.set(key, input.value));
-    cancel.addEventListener('click', () => {
-        if (busy) return;
-        descriptionDrafts.delete(key);
-        input.value = description === input.placeholder ? '' : description;
-        setEditing(false); edit.focus();
-    });
-    save.addEventListener('click', async () => {
-        if (busy) return;
-        setBusy(true); save.textContent = 'Saving…'; error.textContent = '';
-        try {
-            const result = await app.UpdatePermissionDescriptions(service.id, {[path]: input.value.trim()});
-            descriptionDrafts.delete(key);
-            await reloadAfterChange('Permission description saved.', result?.warning, true);
-            // If refreshing failed, keep the local row usable for another edit.
-            description = input.value.trim() || input.placeholder;
-            setEditing(false);
-        } catch (failure) { error.textContent = String(failure); }
-        finally { save.textContent = 'Save'; setBusy(false); }
-    });
-    input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') { event.preventDefault(); save.click(); }
-        if (event.key === 'Escape') { event.preventDefault(); cancel.click(); }
-    });
-    row.append(edit, editor);
-}
 
 setupUpdates();

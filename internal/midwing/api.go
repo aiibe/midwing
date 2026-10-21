@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"mime"
 	"net/http"
 	"slices"
 	"strings"
@@ -24,30 +26,30 @@ func (c *Client) Call(ctx context.Context, service, method, path string) (json.R
 
 // CallWithBody makes an authorized JSON API request. Request bodies are accepted only for POST.
 func (c *Client) CallWithBody(ctx context.Context, service, method, path string, requestBody json.RawMessage) (json.RawMessage, error) {
-	response, err := c.call(ctx, service, method, path, requestBody, true)
+	response, err := c.call(ctx, service, method, path, requestBody, true, ResponseOptions{}, nil)
 	if err != nil {
 		return nil, err
 	}
 	return json.RawMessage(response), nil
 }
 
-// CallWithBodyTo sends an authorized JSON POST and writes its successful response bytes to out.
-func (c *Client) CallWithBodyTo(ctx context.Context, service, path string, requestBody json.RawMessage, out io.Writer) error {
-	if out == nil {
-		return errors.New("output writer is required")
+func (c *Client) call(ctx context.Context, service, method, path string, requestBody json.RawMessage, requireJSON bool, options ResponseOptions, consume func([]byte) error) ([]byte, error) {
+	if options.MaxBytes == 0 {
+		options.MaxBytes = DefaultMaxResponseBytes
 	}
-	response, err := c.call(ctx, service, "POST", path, requestBody, false)
-	if err != nil {
-		return err
+	if options.MaxBytes < 1 || options.MaxBytes == math.MaxInt64 {
+		return nil, errors.New("response size limit must be between 1 and 9223372036854775806 bytes")
 	}
-	n, err := out.Write(response)
-	if err == nil && n != len(response) {
-		return io.ErrShortWrite
+	if options.Accept == "" {
+		options.Accept = "*/*"
+		if requireJSON {
+			options.Accept = "application/json"
+		}
 	}
-	return err
-}
-
-func (c *Client) call(ctx context.Context, service, method, path string, requestBody json.RawMessage, requireJSON bool) ([]byte, error) {
+	mediaType, _, err := mime.ParseMediaType(options.Accept)
+	if err != nil || !strings.Contains(mediaType, "/") || strings.ContainsAny(options.Accept, "\r\n") {
+		return nil, errors.New("accept must be a valid media type")
+	}
 	method = strings.ToUpper(method)
 	switch method {
 	case "GET":
@@ -74,10 +76,19 @@ func (c *Client) call(ctx context.Context, service, method, path string, request
 		return nil, e
 	}
 	a := Activity{Time: time.Now().UTC(), Operation: service + " " + method + " " + operation, Outcome: "failed"}
-	result, callErr := c.execute(ctx, s, state.Connections, permission, method, path, requestBody, requireJSON, &a)
-	if callErr == nil && requireJSON && !json.Valid(result) {
+	result, callErr := c.execute(ctx, s, state.Connections, permission, method, path, requestBody, options, &a)
+	if callErr == nil && requireJSON && len(result) != 0 && !json.Valid(result) {
 		result = nil
 		callErr = errors.New("service returned invalid JSON")
+	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		callErr = errors.Join(callErr, ctxErr)
+	}
+	if callErr == nil && consume != nil {
+		callErr = consume(result)
+	}
+	if callErr == nil {
+		callErr = ctx.Err()
 	}
 	if callErr == nil {
 		a.Outcome = "success"
@@ -88,7 +99,7 @@ func (c *Client) call(ctx context.Context, service, method, path string, request
 	return result, callErr
 }
 
-func (c *Client) execute(ctx context.Context, s Service, connections []Connection, permission, method, path string, requestBody json.RawMessage, requireJSON bool, a *Activity) ([]byte, error) {
+func (c *Client) execute(ctx context.Context, s Service, connections []Connection, permission, method, path string, requestBody json.RawMessage, options ResponseOptions, a *Activity) ([]byte, error) {
 	var conn *Connection
 	for i := range connections {
 		if connections[i].Service == s.ID {
@@ -131,9 +142,7 @@ func (c *Client) execute(ctx context.Context, s Service, connections []Connectio
 	if e != nil {
 		return nil, e
 	}
-	if !requireJSON {
-		req.Header.Set("Accept", "*/*")
-	}
+	req.Header.Set("Accept", options.Accept)
 	resp, e := c.httpClient().Do(req)
 	if e != nil {
 		return nil, errors.New("service request failed")
@@ -146,42 +155,12 @@ func (c *Client) execute(ctx context.Context, s Service, connections []Connectio
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("%s returned HTTP %d", s.Name, resp.StatusCode)
 	}
-	body, e := readResponse(resp, 8*1024*1024)
+	body, e := readResponse(resp, options.MaxBytes)
 	if e != nil {
 		return nil, e
 	}
-	for _, secret := range []string{token, previous} {
-		if secret != "" && bytes.Contains(body, []byte(secret)) {
-			return nil, errors.New("response contains credential; output suppressed")
-		}
-	}
-	if json.Valid(body) && responseContainsSecret(body, token, previous) {
+	if responseContainsSecret(body, token, previous) {
 		return nil, errors.New("response contains credential; output suppressed")
 	}
 	return body, nil
-}
-
-// Inspect every decoded string, including object keys and duplicate-key values.
-func responseContainsSecret(body []byte, secrets ...string) bool {
-	if !json.Valid(body) {
-		return true
-	}
-	decoder := json.NewDecoder(bytes.NewReader(body))
-	decoder.UseNumber()
-	for {
-		token, err := decoder.Token()
-		if errors.Is(err, io.EOF) {
-			return false
-		}
-		if err != nil {
-			return true
-		}
-		if value, ok := token.(string); ok {
-			for _, secret := range secrets {
-				if secret != "" && strings.Contains(value, secret) {
-					return true
-				}
-			}
-		}
-	}
 }
