@@ -60,6 +60,57 @@ func TestCustomTokenServiceSurvivesRestart(t *testing.T) {
 		}
 	}
 }
+
+func TestCustomPOSTRequiresItsOwnPermissionAndSendsJSON(t *testing.T) {
+	s := testStore(t)
+	d := tokenDefinition()
+	d.Endpoints = []CustomEndpoint{{Path: "/items", Methods: []string{"GET", "POST"}}}
+	if err := s.CreateCustomService(d); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	c := Client{Store: s, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
+		calls++
+		if r.Method != "POST" || r.URL.Path != "/v1/items" || r.Header.Get("X-API-Key") != "private-api-key" || r.Header.Get("Content-Type") != "application/json" {
+			t.Fatal("incorrect POST request")
+		}
+		var payload map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload["name"] == "" {
+			t.Fatal("incorrect request JSON")
+		}
+		if payload["name"] == "private-api-key" {
+			return &http.Response{StatusCode: 200, Body: ioBody(`{"created":"private-api-key"}`)}, nil
+		}
+		return &http.Response{StatusCode: 200, Body: ioBody(`{"created":true}`)}, nil
+	})}}
+	if _, err := c.CallWithBody(context.Background(), d.ID, "POST", "/items", json.RawMessage(`{"name":"private-body-value"}`)); err == nil || calls != 0 {
+		t.Fatal("POST bypassed its separate permission")
+	}
+	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.CallWithBody(context.Background(), d.ID, "POST", "/items", json.RawMessage(`{"name":"private-body-value"}`)); err != nil || calls != 1 {
+		t.Fatalf("authorized POST failed: %v", err)
+	}
+	if _, err := c.CallWithBody(context.Background(), d.ID, "POST", "/items", json.RawMessage(`not-json`)); err == nil || calls != 1 {
+		t.Fatal("invalid JSON reached service")
+	}
+	if _, err := c.CallWithBody(context.Background(), d.ID, "POST", "/items", json.RawMessage(`{"name":"private-api-key"}`)); err == nil || calls != 2 {
+		t.Fatal("credential echo was not suppressed")
+	}
+	history, err := s.History()
+	if err != nil || len(history) != 3 || history[0].Operation != "my-api POST /items" {
+		t.Fatalf("unexpected activity: %#v %v", history, err)
+	}
+	for _, row := range history {
+		if strings.Contains(row.Operation, "private-body-value") || strings.Contains(row.Operation, "private-api-key") {
+			t.Fatal("request body leaked into activity")
+		}
+	}
+}
 func TestCustomPasswordService(t *testing.T) {
 	s := testStore(t)
 	d := tokenDefinition()
@@ -137,6 +188,10 @@ func TestCustomDefinitionValidation(t *testing.T) {
 		{"unknown auth", func(d *CustomService) { d.AuthKind = "cookie" }},
 		{"missing login", func(d *CustomService) { d.AuthKind = "password" }},
 		{"no endpoints", func(d *CustomService) { d.Endpoints = nil }},
+		{"unsupported method", func(d *CustomService) { d.Endpoints[0].Methods = []string{"DELETE"} }},
+		{"duplicate method", func(d *CustomService) { d.Endpoints[0].Methods = []string{"POST", "POST"} }},
+		{"lowercase method", func(d *CustomService) { d.Endpoints[0].Methods = []string{"post"} }},
+		{"empty methods", func(d *CustomService) { d.Endpoints[0].Methods = []string{} }},
 		{"invalid query name", func(d *CustomService) { d.Endpoints[0].QueryParameters = []string{"redirect URL"} }},
 		{"invalid ID", func(d *CustomService) { d.ID = "my api" }},
 	}
@@ -288,6 +343,7 @@ func TestPermissionDescriptionsPreserveConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	d.Endpoints[0].Description = "Updated through CLI"
+	d.Endpoints[0].Methods = []string{"GET"}
 	if err := s.UpdateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
@@ -322,5 +378,30 @@ func TestPermissionDescriptionsPreserveConnection(t *testing.T) {
 	d.Endpoints[0].Description = strings.Repeat("x", 501)
 	if _, err := d.compile(); err == nil {
 		t.Fatal("accepted excessive description on creation")
+	}
+}
+
+func TestDefinitionHashTreatsMethodsAsSet(t *testing.T) {
+	d := tokenDefinition()
+	legacyHash := d.definitionHash()
+	d.Endpoints[0].Methods = []string{"GET"}
+	if d.definitionHash() != legacyHash {
+		t.Fatal("explicit GET changed the legacy hash")
+	}
+	d.Endpoints[0].Methods = []string{"POST", "GET"}
+	writeHash := d.definitionHash()
+	if writeHash == legacyHash {
+		t.Fatal("adding POST did not change the definition hash")
+	}
+	if d.Endpoints[0].Methods[0] != "POST" {
+		t.Fatal("hashing mutated the definition")
+	}
+	d.Endpoints[0].Methods = []string{"GET", "POST"}
+	if d.definitionHash() != writeHash {
+		t.Fatal("method order changed the definition hash")
+	}
+	d.Endpoints[0].Methods = []string{"POST"}
+	if d.definitionHash() == writeHash || d.definitionHash() == legacyHash {
+		t.Fatal("POST-only definition did not have a distinct hash")
 	}
 }

@@ -236,6 +236,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); f
 .optional { color: var(--muted); font-size: 11px; margin-left: 5px; }
 .custom-form .endpoint-row { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; align-items: center; }
 .endpoint-options { grid-column: 1 / -1; }
+.method-options { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+.method-options label { display: flex; align-items: center; gap: 6px; margin: 0; }
 .endpoint-options label { display: block; margin-top: 8px; }
 .custom-form .actions { padding-top: 22px; border-top: 1px solid var(--border); }
 @media (max-width: 480px) { .form-options summary span { display: block; float: none; margin: 5px 0 0 15px; } }

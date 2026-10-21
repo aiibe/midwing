@@ -62,7 +62,7 @@ func validateDefinitionJSON(data []byte) error {
 		return err
 	}
 	for _, endpoint := range endpoints {
-		if _, err := definitionObject(endpoint, "path", "description queryParameters"); err != nil {
+		if _, err := definitionObject(endpoint, "path", "description methods queryParameters"); err != nil {
 			return err
 		}
 	}

@@ -190,3 +190,49 @@ func TestActivityFailurePreservesSanitizedCallError(t *testing.T) {
 		}
 	}
 }
+
+func TestInvalidRequestBodiesNeverReachService(t *testing.T) {
+	store := testStore(t)
+	d := tokenDefinition()
+	d.Endpoints = []CustomEndpoint{{Path: "/items", Methods: []string{"GET", "POST"}}}
+	if err := store.CreateCustomService(d); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+		t.Fatal(err)
+	}
+	client := Client{Store: store, HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {
+		t.Fatal("invalid request reached service")
+		return nil, nil
+	})}}
+	for _, tc := range []struct{ name, method, body string }{
+		{"GET body", "GET", "{}"},
+		{"missing POST body", "POST", ""},
+		{"invalid JSON", "POST", "not-json"},
+		{"multiple JSON values", "POST", "{} {}"},
+		{"oversized JSON", "POST", `"` + strings.Repeat("a", 1024*1024) + `"`},
+		{"unsupported method", "DELETE", "{}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := client.CallWithBody(context.Background(), d.ID, tc.method, "/items", json.RawMessage(tc.body)); err == nil {
+				t.Fatal("accepted invalid request")
+			}
+		})
+	}
+}
+
+func TestPOSTOnlyEndpointRejectsGET(t *testing.T) {
+	d := tokenDefinition()
+	d.Endpoints = []CustomEndpoint{{Path: "/items", Methods: []string{"POST"}}}
+	service, err := d.compile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := service.allowed("GET", "/items"); err == nil {
+		t.Fatal("POST-only endpoint allowed GET")
+	}
+	permission, _, err := service.allowed("POST", "/items")
+	if err != nil || permission != "endpoint-1-post" {
+		t.Fatalf("POST permission = %q, error = %v", permission, err)
+	}
+}

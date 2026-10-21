@@ -20,16 +20,16 @@ var tokenFixture = Service{
 	Examples: []string{"/profile", "/items"},
 	Endpoints: []Endpoint{
 		{
-			Paths:      []string{"/profile"},
-			Permission: "profile",
-			Pattern:    regexp.MustCompile(`^/profile$`),
-			Queries:    map[string]int{"page": 0, "per_page": 100},
+			Paths:             []string{"/profile"},
+			MethodPermissions: map[string]string{"GET": "profile"},
+			Pattern:           regexp.MustCompile(`^/profile$`),
+			Queries:           map[string]int{"page": 0, "per_page": 100},
 		},
 		{
-			Paths:      []string{"/items", "/items/ITEM_ID"},
-			Permission: "items",
-			Pattern:    regexp.MustCompile(`^/items(/[A-Za-z0-9_.-]+)?$`),
-			Queries:    map[string]int{"page": 0, "per_page": 100},
+			Paths:             []string{"/items", "/items/ITEM_ID"},
+			MethodPermissions: map[string]string{"GET": "items"},
+			Pattern:           regexp.MustCompile(`^/items(/[A-Za-z0-9_.-]+)?$`),
+			Queries:           map[string]int{"page": 0, "per_page": 100},
 		},
 	},
 }

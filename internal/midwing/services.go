@@ -2,6 +2,7 @@ package midwing
 
 import (
 	"errors"
+	"maps"
 	"net/url"
 	"regexp"
 	"slices"
@@ -19,12 +20,23 @@ type PasswordAuth struct {
 	RefreshPath   string `json:"refreshPath"` // Optional: POST with the current authorization header; returns TokenField.
 }
 type Endpoint struct {
-	Parameters []string // Allowed string query parameters for custom endpoints.
-	Paths      []string // CLI path templates for agent discovery.
-	Permission string
-	Pattern    *regexp.Regexp
-	Queries    map[string]int // Positive integer pagination parameters and their maximum (0 = unbounded).
+	Parameters        []string          // Allowed string query parameters for custom endpoints.
+	Paths             []string          // CLI path templates for agent discovery.
+	MethodPermissions map[string]string // Grants required by each supported HTTP method.
+	Pattern           *regexp.Regexp
+	Queries           map[string]int // Positive integer pagination parameters and their maximum (0 = unbounded).
 }
+
+// PermissionFor returns the grant required for a method, or empty if unsupported.
+func (e Endpoint) PermissionFor(method string) string {
+	return e.MethodPermissions[method]
+}
+
+// Methods returns the endpoint's supported methods in a stable order.
+func (e Endpoint) Methods() []string {
+	return slices.Sorted(maps.Keys(e.MethodPermissions))
+}
+
 type Permission struct {
 	ID          string `json:"id"`
 	Label       string `json:"label"`
@@ -60,8 +72,9 @@ func validatePermissions(s Service, permissions []string) error {
 	return nil
 }
 func (s Service) allowed(method, path string) (string, string, error) {
-	if method != "GET" {
-		return "", "", errors.New("only GET is supported")
+	method = strings.ToUpper(method)
+	if method != "GET" && method != "POST" {
+		return "", "", errors.New("only GET and POST are supported")
 	}
 	u, e := url.Parse(path)
 	if e != nil || u.IsAbs() || u.Host != "" || u.Fragment != "" || u.RawPath != "" || strings.ContainsAny(path, "\\\r\n") {
@@ -80,6 +93,10 @@ func (s Service) allowed(method, path string) (string, string, error) {
 		if !ep.Pattern.MatchString(u.Path) {
 			continue
 		}
+		permission := ep.PermissionFor(method)
+		if permission == "" {
+			return "", "", errors.New("request method is not supported for this endpoint")
+		}
 		for k, v := range q {
 			if slices.Contains(ep.Parameters, k) {
 				if len(v) != 1 || len(v[0]) > 2048 {
@@ -96,7 +113,7 @@ func (s Service) allowed(method, path string) (string, string, error) {
 				return "", "", errors.New("invalid pagination")
 			}
 		}
-		return ep.Permission, u.Path, nil
+		return permission, u.Path, nil
 	}
 	return "", "", errors.New("endpoint is not supported")
 }

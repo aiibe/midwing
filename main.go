@@ -127,20 +127,12 @@ func runCLIWithInput(args []string, store *midwing.Store, in io.Reader, out io.W
 	if len(args) > 0 && args[0] == "services" {
 		return runServicesCLI(args[1:], store, in, out)
 	}
-	if len(args) == 2 && args[0] == "get" && args[1] == "--help" {
-		_, err := fmt.Fprintln(out, "midwing get SERVICE PATH\nCall an enabled GET endpoint; quote paths containing queries. Returns one JSON page.")
-		return err
-	}
-	if len(args) == 3 && args[0] == "get" {
-		v, err := (&midwing.Client{Store: store}).Call(context.Background(), args[1], "GET", args[2])
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintln(out, string(v))
-		return err
+	if len(args) > 0 && (args[0] == "get" || args[0] == "post") {
+		return runRequestCLI(args, store, out)
 	}
 	return fmt.Errorf("unknown command; run midwing --help")
 }
+
 func main() {
 	store, e := midwing.NewStore()
 	if e == nil {

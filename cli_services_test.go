@@ -188,6 +188,51 @@ func TestDiscoveryGrantedPermissions(t *testing.T) {
 	}
 }
 
+func TestPostCLIUsesMethodSpecificGrant(t *testing.T) {
+	store := &midwing.Store{Dir: t.TempDir(), Vault: cliVault{}}
+	definition := midwing.CustomService{ID: "write-api", Name: "Write API", BaseURL: "https://api.example.test", AuthKind: "token", Header: "Authorization", Endpoints: []midwing.CustomEndpoint{{Path: "/items", Methods: []string{"GET", "POST"}}}}
+	if err := store.CreateCustomService(definition); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveService("write-api", "private-token", []string{"endpoint-1"}); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	err := runCLIWithInput([]string{"post", "write-api", "/items", `{"name":"test"}`}, store, nil, &out)
+	if err == nil || !strings.Contains(err.Error(), "grant the required permission") || out.Len() != 0 {
+		t.Fatalf("POST did not enforce its own grant: %v %s", err, out.String())
+	}
+	state, err := store.RegistrySnapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(state.Services[0].Permissions) < 2 || state.Services[0].Permissions[1].Label != "POST /items" {
+		t.Fatalf("POST permission missing: %#v", state.Services[0].Permissions)
+	}
+}
+
+func TestDiscoveryPOSTOnlyGrant(t *testing.T) {
+	store := &midwing.Store{Dir: t.TempDir(), Vault: cliVault{}}
+	definition := midwing.CustomService{ID: "write-api", Name: "Write API", BaseURL: "https://api.example.test", AuthKind: "token", Header: "Authorization", Endpoints: []midwing.CustomEndpoint{{Path: "/items", Methods: []string{"POST"}}}}
+	if err := store.CreateCustomService(definition); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveService(definition.ID, "private-token", []string{"endpoint-1-post"}); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runCLIWithInput([]string{"services", definition.ID}, store, nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	var view serviceDiscovery
+	if err := json.Unmarshal(out.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Endpoints) != 1 || !view.Endpoints[0].Enabled || len(view.Endpoints[0].Requests) != 1 || view.Endpoints[0].Requests[0] != (requestView{Method: "POST", Enabled: true}) {
+		t.Fatalf("incorrect POST grant: %s", out.String())
+	}
+}
+
 func TestSchemaAndHelp(t *testing.T) {
 	var schema struct {
 		Examples []json.RawMessage `json:"examples"`
@@ -196,7 +241,7 @@ func TestSchemaAndHelp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := json.Unmarshal(data, &schema); err != nil || len(schema.Examples) != 2 {
+	if err := json.Unmarshal(data, &schema); err != nil || len(schema.Examples) != 3 {
 		t.Fatal("missing schema examples")
 	}
 	for _, input := range schema.Examples {
@@ -213,7 +258,7 @@ func TestSchemaAndHelp(t *testing.T) {
 			t.Fatal("validation persisted settings")
 		}
 	}
-	for _, args := range [][]string{{"--help"}, {"get", "--help"}, {"services", "--help"}, {"services", "schema", "--help"}, {"services", "create", "--help"}, {"services", "validate", "--help"}, {"services", "example", "--help"}} {
+	for _, args := range [][]string{{"--help"}, {"get", "--help"}, {"post", "--help"}, {"services", "--help"}, {"services", "schema", "--help"}, {"services", "create", "--help"}, {"services", "validate", "--help"}, {"services", "example", "--help"}} {
 		var out bytes.Buffer
 		if err := runCLIWithInput(args, nil, nil, &out); err != nil || out.Len() == 0 {
 			t.Fatalf("help failed: %v: %v", args, err)
@@ -235,6 +280,9 @@ func TestDefinitionJSONContract(t *testing.T) {
 		strings.Replace(serviceJSON, `"prefix":"Bearer "`, `"prefix":"Bearer ","password":null`, 1),
 		strings.Replace(serviceJSON, `"queryParameters":["limit"]`, `"queryParameters":null`, 1),
 		strings.Replace(serviceJSON, `"queryParameters":["limit"]`, `"queryParameters":[null]`, 1),
+		strings.Replace(serviceJSON, `"queryParameters":["limit"]`, `"methods":null`, 1),
+		strings.Replace(serviceJSON, `"queryParameters":["limit"]`, `"methods":[null]`, 1),
+		strings.Replace(serviceJSON, `"queryParameters":["limit"]`, `"methods":[]`, 1),
 		strings.Replace(serviceJSON, `"id":`, `"ID":`, 1),
 		strings.Replace(serviceJSON, `"path":"/items/{id}"`, `"path":null`, 1),
 		strings.Replace(serviceJSON, `"authKind":"token"`, `"authKind":"password","password":{"loginPath":"/login","emailField":"email","passwordField":"password","tokenField":"token","refreshPath":null}`, 1),
@@ -251,5 +299,23 @@ func TestDefinitionJSONContract(t *testing.T) {
 	var out bytes.Buffer
 	if err := runCLIWithInput([]string{"services", "validate", "-"}, nil, strings.NewReader(omitted), &out); err != nil {
 		t.Fatal("omission defaults rejected:", err)
+	}
+}
+
+func TestAPICommandsRejectMalformedArguments(t *testing.T) {
+	for _, args := range [][]string{
+		{"get"},
+		{"get", "example"},
+		{"get", "example", "/items", "{}"},
+		{"post"},
+		{"post", "example"},
+		{"post", "example", "/items"},
+		{"post", "example", "/items", "{}", "{}"},
+	} {
+		var out bytes.Buffer
+		err := runCLIWithInput(args, nil, nil, &out)
+		if err == nil || !strings.Contains(err.Error(), "usage: midwing "+args[0]) || out.Len() != 0 {
+			t.Fatalf("malformed command %q: error = %v, output = %q", args, err, out.String())
+		}
 	}
 }

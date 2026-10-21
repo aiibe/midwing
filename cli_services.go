@@ -20,6 +20,7 @@ midwing services validate FILE|-     Validate without saving
 midwing services create FILE|-       Create a custom service
 midwing services update FILE|-       Update endpoint descriptions
 midwing get SERVICE PATH             Call an enabled GET endpoint
+midwing post SERVICE PATH JSON       Call an enabled POST endpoint
 Use --help after a command for details.`
 
 const servicesHelp = `midwing services
@@ -37,9 +38,29 @@ type serviceSummary struct {
 
 type endpointView struct {
 	Paths           []string       `json:"paths"`
+	Methods         []string       `json:"methods"`
 	QueryParameters []string       `json:"queryParameters,omitempty"`
 	Pagination      map[string]int `json:"pagination,omitempty"`
 	Enabled         bool           `json:"enabled"`
+	Requests        []requestView  `json:"requests"`
+}
+
+type requestView struct {
+	Method  string `json:"method"`
+	Enabled bool   `json:"enabled"`
+}
+
+func describeEndpoint(endpoint midwing.Endpoint, permissions map[string]bool) endpointView {
+	view := endpointView{
+		Paths: endpoint.Paths, Methods: endpoint.Methods(), QueryParameters: endpoint.Parameters,
+		Pagination: endpoint.Queries, Requests: []requestView{},
+	}
+	for _, method := range view.Methods {
+		enabled := permissions[endpoint.PermissionFor(method)]
+		view.Requests = append(view.Requests, requestView{Method: method, Enabled: enabled})
+		view.Enabled = view.Enabled || enabled
+	}
+	return view
 }
 
 type serviceDiscovery struct {
@@ -197,7 +218,7 @@ func runServicesCLI(args []string, store *midwing.Store, in io.Reader, out io.Wr
 		}
 		view := serviceDiscovery{serviceSummary{service.ID, connected}, []endpointView{}}
 		for _, endpoint := range service.Endpoints {
-			view.Endpoints = append(view.Endpoints, endpointView{endpoint.Paths, endpoint.Parameters, endpoint.Queries, permissions[endpoint.Permission]})
+			view.Endpoints = append(view.Endpoints, describeEndpoint(endpoint, permissions))
 		}
 		return encode(view)
 	}

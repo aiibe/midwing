@@ -7,7 +7,7 @@ if [ "$#" -gt 1 ]; then
 fi
 source_app="${1:-build/bin/midwing.app}"
 if [ ! -d "$source_app" ]; then
-  echo 'Build first: go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build' >&2
+  echo 'Build first: go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build' >&2
   exit 1
 fi
 app_dir="${MIDWING_APP_DIR:-$HOME/Applications}"

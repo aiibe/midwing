@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode/utf8"
 )
@@ -16,6 +17,7 @@ import (
 type CustomEndpoint struct {
 	Description     string   `json:"description,omitempty"`
 	Path            string   `json:"path"`
+	Methods         []string `json:"methods,omitempty"`
 	QueryParameters []string `json:"queryParameters"`
 }
 type CustomService struct {
@@ -146,9 +148,9 @@ func (d CustomService) validateAuth() error {
 
 func (d CustomService) compileEndpoints() (Service, error) {
 	if len(d.Endpoints) == 0 || len(d.Endpoints) > 100 {
-		return Service{}, errors.New("add between 1 and 100 GET endpoints")
+		return Service{}, errors.New("add between 1 and 100 endpoints")
 	}
-	s := Service{ID: d.ID, Name: strings.TrimSpace(d.Name), Description: "Custom service · Read-only access", Origin: strings.TrimSuffix(d.BaseURL, "/"), AuthKind: d.AuthKind, Header: http.CanonicalHeaderKey(d.Header), Prefix: d.Prefix, Password: d.Password, Custom: true}
+	s := Service{ID: d.ID, Name: strings.TrimSpace(d.Name), Description: "Custom API service", Origin: strings.TrimSuffix(d.BaseURL, "/"), AuthKind: d.AuthKind, Header: http.CanonicalHeaderKey(d.Header), Prefix: d.Prefix, Password: d.Password, Custom: true}
 	seen := map[string]bool{}
 	for i, endpoint := range d.Endpoints {
 		pattern, hint, e := compilePath(endpoint.Path, true)
@@ -165,7 +167,7 @@ func (d CustomService) compileEndpoints() (Service, error) {
 		}
 		seen[pattern.String()] = true
 		if d.Password != nil && (pattern.MatchString(d.Password.LoginPath) || d.Password.RefreshPath != "" && pattern.MatchString(d.Password.RefreshPath)) {
-			return Service{}, errors.New("login and refresh paths cannot be exposed as read endpoints")
+			return Service{}, errors.New("login and refresh paths cannot be exposed as API endpoints")
 		}
 		if len(endpoint.QueryParameters) > 30 {
 			return Service{}, errors.New("too many query parameters")
@@ -177,26 +179,71 @@ func (d CustomService) compileEndpoints() (Service, error) {
 			}
 			keys[key] = true
 		}
-		description := strings.TrimSpace(endpoint.Description)
-		if utf8.RuneCountInString(description) > 500 {
-			return Service{}, fmt.Errorf("endpoint %d: description must contain at most 500 characters", i+1)
+		requests, permissions, err := endpoint.compilePermissions(i + 1)
+		if err != nil {
+			return Service{}, fmt.Errorf("endpoint %d: %w", i+1, err)
 		}
-		if description == "" {
-			description = "Read " + endpoint.Path
-		}
-		permission := fmt.Sprintf("endpoint-%d", i+1)
-		s.Permissions = append(s.Permissions, Permission{ID: permission, Label: "GET " + endpoint.Path, Description: description})
-		s.Endpoints = append(s.Endpoints, Endpoint{Paths: []string{hint}, Permission: permission, Pattern: pattern, Parameters: endpoint.QueryParameters})
+		s.Permissions = append(s.Permissions, permissions...)
+		s.Endpoints = append(s.Endpoints, Endpoint{Paths: []string{hint}, MethodPermissions: requests, Pattern: pattern, Parameters: endpoint.QueryParameters})
 		s.Examples = append(s.Examples, hint)
 	}
 	s.DefinitionHash = d.definitionHash()
 	return s, nil
 }
 
+// sortedMethods applies the omission default without changing the definition.
+func (e CustomEndpoint) sortedMethods() []string {
+	methods := slices.Clone(e.Methods)
+	if methods == nil {
+		methods = []string{"GET"}
+	}
+	slices.Sort(methods)
+	return methods
+}
+
+func (e CustomEndpoint) compilePermissions(index int) (map[string]string, []Permission, error) {
+	methods := e.sortedMethods()
+	if len(methods) == 0 || len(methods) > 2 {
+		return nil, nil, errors.New("methods may contain GET and POST only")
+	}
+	for i, method := range methods {
+		if method != "GET" && method != "POST" || i > 0 && method == methods[i-1] {
+			return nil, nil, errors.New("methods must contain unique GET and/or POST values")
+		}
+	}
+	description := strings.TrimSpace(e.Description)
+	if utf8.RuneCountInString(description) > 500 {
+		return nil, nil, errors.New("description must contain at most 500 characters")
+	}
+	requests := make(map[string]string, len(methods))
+	permissions := make([]Permission, 0, len(methods))
+	for _, method := range methods {
+		id := fmt.Sprintf("endpoint-%d", index)
+		defaultDescription := "Read " + e.Path
+		if method == "POST" {
+			id += "-post"
+			defaultDescription = "Submit a request to " + e.Path
+		}
+		methodDescription := description
+		if methodDescription == "" {
+			methodDescription = defaultDescription
+		}
+		requests[method] = id
+		permissions = append(permissions, Permission{ID: id, Label: method + " " + e.Path, Description: methodDescription})
+	}
+	return requests, permissions, nil
+}
+
 func (d CustomService) definitionHash() string {
 	d.Endpoints = append([]CustomEndpoint(nil), d.Endpoints...)
 	for i := range d.Endpoints {
 		d.Endpoints[i].Description = ""
+		// Methods are a set; retain the legacy hash for GET-only definitions.
+		methods := d.Endpoints[i].sortedMethods()
+		if slices.Equal(methods, []string{"GET"}) {
+			methods = nil
+		}
+		d.Endpoints[i].Methods = methods
 	}
 	data, _ := json.Marshal(d)
 	hash := sha256.Sum256(data)

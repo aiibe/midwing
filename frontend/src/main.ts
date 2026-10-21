@@ -69,6 +69,10 @@ function syncCredentialFields(clear = false) {
     document.querySelector('#permissions')!.classList.toggle('permissions-readonly', !editing);
     document.querySelectorAll<HTMLInputElement>('[name="permission"]').forEach(input => { input.disabled = busy || !editing; });
 }
+const permissionPath = (label: string) => label.replace(/^(GET|POST) /, '');
+const defaultPermissionDescription = (label: string) => label.startsWith('POST ')
+    ? `Submit a request to ${permissionPath(label)}`
+    : label.replace(/^GET /, 'Read ');
 function renderService(preserveEdits = false) {
     if (!preserveEdits) { permissionsDirty = false; reconnecting = false; }
     const service = current();
@@ -89,6 +93,7 @@ function renderService(preserveEdits = false) {
     const checks = new Map([...document.querySelectorAll<HTMLInputElement>('[name="permission"]')].map(el => [el.value, el.checked]));
     const permissions = document.querySelector('#permissions')!;
     permissions.replaceChildren();
+    const descriptionPaths = new Set<string>();
     for (const permission of service.permissions) {
         const label = document.createElement('label'); label.className = 'check';
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
@@ -96,14 +101,19 @@ function renderService(preserveEdits = false) {
         checkbox.checked = preserveEdits && permissionsDirty && checks.has(permission.id) ? checks.get(permission.id)! : conn ? conn.permissions.includes(permission.id) : true;
         const details = document.createElement('div'); details.textContent = permission.label;
         // Custom endpoints already contain the path in their label.
-        if (permission.description !== permission.label.replace(/^GET /, 'Read ')) {
+        if (permission.description !== defaultPermissionDescription(permission.label)) {
             const description = document.createElement('small'); description.textContent = permission.description;
             details.append(description);
         }
         label.append(checkbox, details);
         const row = document.createElement('div'); row.className = 'permission-row';
         row.append(label);
-        if (service.custom) addInlineDescription(row, service, permission.label.replace(/^GET /, ''), permission.description);
+        const path = permissionPath(permission.label);
+        if (service.custom && !descriptionPaths.has(path)) {
+            const shared = service.permissions.some(other => other.id !== permission.id && permissionPath(other.label) === path);
+            addInlineDescription(row, service, permission.label, permission.description, shared);
+            descriptionPaths.add(path);
+        }
         permissions.append(row);
     }
     syncCredentialFields(!preserveEdits);
@@ -261,20 +271,27 @@ document.querySelector('#add-service')!.addEventListener('click', openCustomForm
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.addEventListener('click', () => showTab(button.dataset.tab!)));
 void load().catch(e => message(String(e), true));
 
-function addInlineDescription(row: HTMLDivElement, service: Service, path: string, description: string) {
+function addInlineDescription(row: HTMLDivElement, service: Service, label: string, description: string, shared: boolean) {
+    const path = permissionPath(label);
     const key = `${service.id}:${path}`;
     const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'permission-edit';
-    edit.textContent = 'Edit'; edit.setAttribute('aria-label', `Edit description for GET ${path}`);
+    edit.textContent = 'Edit'; edit.setAttribute('aria-label', `Edit description for ${label}`);
     const editor = document.createElement('div'); editor.className = 'permission-editor';
     const input = document.createElement('input'); input.className = 'permission-description'; input.maxLength = 500;
-    input.placeholder = `Read ${path}`;
+    input.placeholder = defaultPermissionDescription(label);
     input.value = descriptionDrafts.get(key) ?? (description === input.placeholder ? '' : description);
-    input.setAttribute('aria-label', `Description for GET ${path}`);
+    input.setAttribute('aria-label', `Description for ${label}`);
     const actions = document.createElement('div'); actions.className = 'permission-editor-actions';
     const save = document.createElement('button'); save.type = 'button'; save.className = 'primary'; save.textContent = 'Save';
     const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'secondary'; cancel.textContent = 'Cancel';
     const error = document.createElement('p'); error.className = 'error'; error.setAttribute('role', 'alert');
     actions.append(save, cancel); editor.append(input, actions, error);
+    if (shared) {
+        const hint = document.createElement('p');
+        hint.textContent = 'This description applies to GET and POST for this path.';
+        editor.prepend(hint);
+        edit.setAttribute('aria-label', `Edit description for GET and POST ${path}`);
+    }
     const setEditing = (editing: boolean) => {
         editor.hidden = !editing; edit.hidden = editing;
         edit.setAttribute('aria-expanded', String(editing));

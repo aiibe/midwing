@@ -19,6 +19,24 @@ type Client struct {
 }
 
 func (c *Client) Call(ctx context.Context, service, method, path string) (json.RawMessage, error) {
+	return c.CallWithBody(ctx, service, method, path, nil)
+}
+
+// CallWithBody makes an authorized JSON API request. Request bodies are accepted only for POST.
+func (c *Client) CallWithBody(ctx context.Context, service, method, path string, requestBody json.RawMessage) (json.RawMessage, error) {
+	method = strings.ToUpper(method)
+	switch method {
+	case "GET":
+		if len(requestBody) != 0 {
+			return nil, errors.New("GET requests must not include a body")
+		}
+	case "POST":
+		if len(requestBody) == 0 || len(requestBody) > 1024*1024 || !json.Valid(requestBody) {
+			return nil, errors.New("POST requires a valid JSON body of at most 1 MiB")
+		}
+	default:
+		return nil, errors.New("only GET and POST are supported")
+	}
 	state, e := c.Store.RegistrySnapshot()
 	if e != nil {
 		return nil, e
@@ -31,14 +49,14 @@ func (c *Client) Call(ctx context.Context, service, method, path string) (json.R
 	if e != nil {
 		return nil, e
 	}
-	a := Activity{Time: time.Now().UTC(), Operation: service + " GET " + operation, Outcome: "failed"}
-	result, callErr := c.execute(ctx, s, state.Connections, permission, path, &a)
+	a := Activity{Time: time.Now().UTC(), Operation: service + " " + method + " " + operation, Outcome: "failed"}
+	result, callErr := c.execute(ctx, s, state.Connections, permission, method, path, requestBody, &a)
 	if e = c.Store.Record(a); e != nil {
 		return nil, errors.Join(callErr, errors.New("could not record activity"))
 	}
 	return result, callErr
 }
-func (c *Client) execute(ctx context.Context, s Service, connections []Connection, permission, path string, a *Activity) (json.RawMessage, error) {
+func (c *Client) execute(ctx context.Context, s Service, connections []Connection, permission, method, path string, requestBody json.RawMessage, a *Activity) (json.RawMessage, error) {
 	var conn *Connection
 	for i := range connections {
 		if connections[i].Service == s.ID {
@@ -73,7 +91,11 @@ func (c *Client) execute(ctx context.Context, s Service, connections []Connectio
 			return nil, e
 		}
 	}
-	req, e := s.request(ctx, "GET", path, nil, token)
+	var requestReader io.Reader
+	if len(requestBody) != 0 {
+		requestReader = bytes.NewReader(requestBody)
+	}
+	req, e := s.request(ctx, method, path, requestReader, token)
 	if e != nil {
 		return nil, e
 	}

@@ -89,7 +89,7 @@ func TestPasswordLoginAndRefresh(t *testing.T) {
 func TestDifferentJSONLoginProtocol(t *testing.T) {
 	// A different API uses email/secret fields, a nested token, a custom header,
 	// and no refresh endpoint. No framework-specific code is involved.
-	definition := Service{ID: "example", Name: "Example", Origin: "https://example.test", AuthKind: "password", Header: "X-Session", Prefix: "Session ", Password: &PasswordAuth{LoginPath: "/login", EmailField: "email", PasswordField: "secret", TokenField: "session.accessToken"}, Permissions: []Permission{{"read", "Read", "Read things"}}, Endpoints: []Endpoint{{nil, nil, "read", regexp.MustCompile(`^/things$`), nil}}}
+	definition := Service{ID: "example", Name: "Example", Origin: "https://example.test", AuthKind: "password", Header: "X-Session", Prefix: "Session ", Password: &PasswordAuth{LoginPath: "/login", EmailField: "email", PasswordField: "secret", TokenField: "session.accessToken"}, Permissions: []Permission{{"read", "Read", "Read things"}}, Endpoints: []Endpoint{{MethodPermissions: map[string]string{"GET": "read"}, Pattern: regexp.MustCompile(`^/things$`)}}}
 	registerServiceFixture(t, definition)
 	s := testStore(t)
 	requests := 0
@@ -212,8 +212,8 @@ func TestEscapedCredentialSuppression(t *testing.T) {
 func registerPasswordFixture(t *testing.T) {
 	t.Helper()
 	registerServiceFixture(t, Service{ID: "sample-auth", Name: "Sample API", Description: "Read your monthly sheets and charges.", Origin: "https://sample.test", AuthKind: "password", Header: "Authorization", Permissions: []Permission{{"sheets", "Sheets", "Read monthly sheets"}, {"charges", "Charges", "Read charges"}}, Examples: []string{"/api/collections/sheets/records", "/api/collections/charges/records"}, Password: &PasswordAuth{LoginPath: "/api/collections/users/auth-with-password", EmailField: "identity", PasswordField: "password", TokenField: "token", RefreshPath: "/api/collections/users/auth-refresh"}, Endpoints: []Endpoint{
-		{nil, []string{"/api/collections/sheets/records", "/api/collections/sheets/records/RECORD_ID"}, "sheets", regexp.MustCompile(`^/api/collections/sheets/records(/[A-Za-z0-9]{15})?$`), map[string]int{"page": 0, "perPage": 100}},
-		{nil, []string{"/api/collections/charges/records", "/api/collections/charges/records/RECORD_ID"}, "charges", regexp.MustCompile(`^/api/collections/charges/records(/[A-Za-z0-9]{15})?$`), map[string]int{"page": 0, "perPage": 100}},
+		{Paths: []string{"/api/collections/sheets/records", "/api/collections/sheets/records/RECORD_ID"}, MethodPermissions: map[string]string{"GET": "sheets"}, Pattern: regexp.MustCompile(`^/api/collections/sheets/records(/[A-Za-z0-9]{15})?$`), Queries: map[string]int{"page": 0, "perPage": 100}},
+		{Paths: []string{"/api/collections/charges/records", "/api/collections/charges/records/RECORD_ID"}, MethodPermissions: map[string]string{"GET": "charges"}, Pattern: regexp.MustCompile(`^/api/collections/charges/records(/[A-Za-z0-9]{15})?$`), Queries: map[string]int{"page": 0, "perPage": 100}},
 	}})
 }
 

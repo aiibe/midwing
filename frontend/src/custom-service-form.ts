@@ -19,7 +19,7 @@ export function setupCustomServiceForm({isBusy, setBusy, selectService, showTab,
     }
     function addEndpointRow() {
         const row = document.createElement('div'); row.className = 'endpoint-row';
-        row.innerHTML = `<div class="endpoint-path-field"><label>GET path<input class="endpoint-path" placeholder="/items or /items/{id}" required></label></div><button type="button" class="danger" aria-label="Remove endpoint">Remove</button><label class="endpoint-options">Permission description<input class="endpoint-description" maxlength="500" placeholder="Optional, e.g. Read your invoices"></label><details class="endpoint-options"><summary>Query parameters</summary><label>Allowed names<input class="endpoint-query" placeholder="page, limit, filter"></label></details>`;
+        row.innerHTML = `<div class="endpoint-path-field"><label>Path<input class="endpoint-path" placeholder="/items or /items/{id}" required></label><div class="method-options"><label><input class="endpoint-method" type="checkbox" value="GET" checked> GET</label><label><input class="endpoint-method" type="checkbox" value="POST"> POST</label></div></div><button type="button" class="danger" aria-label="Remove endpoint">Remove</button><label class="endpoint-options">Permission description<input class="endpoint-description" maxlength="500" placeholder="Optional request description"></label><details class="endpoint-options"><summary>Query parameters</summary><label>Allowed names<input class="endpoint-query" placeholder="page, limit, filter"></label></details>`;
         row.querySelector('button')!.addEventListener('click', () => row.remove());
         document.querySelector('#custom-endpoints')!.append(row);
     }
@@ -57,6 +57,7 @@ export function setupCustomServiceForm({isBusy, setBusy, selectService, showTab,
             endpoints: [...document.querySelectorAll<HTMLDivElement>('.endpoint-row')].map(row => ({
                 description: row.querySelector<HTMLInputElement>('.endpoint-description')!.value.trim(),
                 path: row.querySelector<HTMLInputElement>('.endpoint-path')!.value.trim(),
+                methods: [...row.querySelectorAll<HTMLInputElement>('.endpoint-method:checked')].map(input => input.value),
                 queryParameters: row.querySelector<HTMLInputElement>('.endpoint-query')!.value.split(',').map(key => key.trim()).filter(Boolean),
             })),
         } satisfies Omit<midwing.CustomService, 'convertValues'>;

@@ -32,7 +32,7 @@ Requires Go 1.24+, Node 22.20+ on the 22.x line or Node 24.12+, and the [Wails v
 Run from the repository root:
 
 ```sh
-go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 build
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build
 ```
 
 On macOS, install the app and CLI:
@@ -54,6 +54,7 @@ Run `midwing` to open the app. Add your API with **+ Add service**, enter its cr
 midwing services
 midwing services my-service
 midwing get my-service /items
+midwing post my-service /items '{"name":"Example"}'
 midwing get my-service /items/123
 ```
 
@@ -67,11 +68,11 @@ The prompt contains no credentials. To refresh an installed skill after an updat
 
 ## Bring your own API
 
-On **Connections**, click **+ Add service**. Enter a name, CLI ID, HTTPS base URL, authentication settings, and allowed GET paths such as `/items` or `/items/{id}`. List any allowed query names. Create the service, then connect and select its endpoint permissions.
+On **Connections**, click **+ Add service**. Enter a name, CLI ID, HTTPS base URL, authentication settings, and allowed paths such as `/items` or `/items/{id}`. Select GET and/or POST for each path and list any allowed query names. Each method has a separate permission; connect the service and select the requests agents may make.
 
 For bearer tokens, use header `Authorization` and prefix `Bearer` in the form. For raw API keys, use the API's header (such as `X-API-Key`) and leave the prefix empty.
 
-Email/password services need a JSON login endpoint and a token response field. Only the returned token is stored. An optional refresh endpoint renews it before each API read.
+Email/password services need a JSON login endpoint and a token response field. Only the returned token is stored. An optional refresh endpoint renews it before each API request.
 
 More at home in a terminal? Create definitions through the CLI:
 
@@ -81,22 +82,29 @@ midwing services validate service.json
 midwing services create service.json
 midwing services my-service
 midwing get my-service /items
+midwing post my-service /items '{"name":"Example"}'
 ```
 
-CLI definitions use `"Bearer "` with a trailing space. That little space matters. Enter credentials in the desktop app after creation.
+In a CLI definition, omitting `methods` means `GET` only. Add `"methods":["GET","POST"]` to an endpoint to enable those requests; each method gets its own permission in the desktop app. `midwing post SERVICE PATH JSON` sends one JSON body (up to 1 MiB). For example:
+
+```json
+{"id":"my-service","name":"My service","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","methods":["GET","POST"],"queryParameters":["limit"]}]}
+```
+
+CLI definitions use `"Bearer "` with a trailing space. Enter credentials in the desktop app after creation.
 
 Edit permission descriptions in the app or with `midwing services update service.json`. Other definition changes require deleting and recreating the service. **Disconnect** removes its saved connection; **Delete service** also removes the custom definition.
 
 ## Under the wing
 
-Midwing checks endpoint and connection permissions before API reads. Tokens live in the OS keychain; settings and activity are stored in the OS user config directory under `midwing/`. Activity excludes query values and response bodies.
+Midwing checks endpoint method and connection permissions before API requests. Tokens live in the OS keychain; settings and activity are stored in the OS user config directory under `midwing/`. Activity excludes query values and request/response bodies.
 
 Requests use fixed HTTPS destinations, disable redirects, and time out after 30 seconds. Responses must be JSON and are limited to 8 MiB (1 MiB for authentication). Midwing runs locally without a background service or hosted backend. Processes with unrestricted access under your OS user can still access the credential store.
 
 ## Tinker with it
 
 ```sh
-go run github.com/wailsapp/wails/v2/cmd/wails@v2.11.0 dev
+go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 dev
 ```
 
 Give your changes a check before takeoff:

@@ -40,8 +40,9 @@ const serviceSchemaJSON = `{
       "items":{
         "type":"object","additionalProperties":false,"required":["path"],
         "properties":{
-          "description":{"type":"string","maxLength":500,"default":"","description":"Permission description; blank or omitted means Read followed by the endpoint path."},
-          "path":{"type":"string","maxLength":1024,"description":"Allowed GET path: exact or unique segment placeholders such as /items/{id}; endpoint patterns must not overlap; no queries, traversal, or login/refresh paths."},
+          "description":{"type":"string","maxLength":500,"default":"","description":"Permission description; blank or omitted generates a method-specific description."},
+          "path":{"type":"string","maxLength":1024,"description":"Allowed path: exact or unique segment placeholders such as /items/{id}; endpoint patterns must not overlap; no queries, traversal, or login/refresh paths."},
+          "methods":{"type":"array","items":{"enum":["GET","POST"]},"minItems":1,"maxItems":2,"uniqueItems":true,"default":["GET"],"description":"Explicitly authorized requests for this path. Omitted means GET only. Each method has a separate permission in the desktop app. POST accepts one JSON body."},
           "queryParameters":{"type":"array","maxItems":30,"uniqueItems":true,"default":[],"items":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_]*$"},"description":"Omitted means no allowed queries. Values are strings, one per key, at most 2048 characters."}
         }
       }
@@ -53,7 +54,8 @@ const serviceSchemaJSON = `{
   ],
   "examples":[
     {"id":"example-token","name":"Example Token","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","queryParameters":["limit","cursor"]},{"path":"/items/{id}"}]},
-    {"id":"example-password","name":"Example Password","baseUrl":"https://api.example.com/v1","authKind":"password","header":"Authorization","prefix":"Bearer ","password":{"loginPath":"/login","emailField":"email","passwordField":"password","tokenField":"session.token","refreshPath":"/refresh"},"endpoints":[{"path":"/items"}]}
+    {"id":"example-password","name":"Example Password","baseUrl":"https://api.example.com/v1","authKind":"password","header":"Authorization","prefix":"Bearer ","password":{"loginPath":"/login","emailField":"email","passwordField":"password","tokenField":"session.token","refreshPath":"/refresh"},"endpoints":[{"path":"/items"}]},
+    {"id":"example-write","name":"Example Write API","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","methods":["GET","POST"],"queryParameters":["limit"]}]}
   ],
   "description":"One JSON object, max 1 MiB, with no credentials. Defaults describe omission behavior; other fields are not inferred. Run services validate FILE|- for authoritative cross-field validation. Validation does not check ID availability. Create the definition, then connect and grant permissions in the desktop app."
 }`

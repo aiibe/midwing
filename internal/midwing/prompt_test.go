@@ -20,7 +20,7 @@ func TestPromptExamplesMatchAllowlist(t *testing.T) {
 			for _, path := range ep.Paths {
 				path = strings.NewReplacer("OWNER", "openai", "REPO", "codex", "RECORD_ID", "123456789012345").Replace(path)
 				permission, _, e := service.allowed("GET", path)
-				if e != nil || permission != ep.Permission {
+				if e != nil || permission != ep.PermissionFor("GET") {
 					t.Fatalf("invalid handoff example %s: %v", path, e)
 				}
 			}
