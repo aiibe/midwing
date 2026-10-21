@@ -53,7 +53,7 @@ The CLI returns JSON, one page per call; errors go to stderr with a nonzero exit
 
 ### Introduce your agent
 
-Paste **Agent setup → Copy prompt** into your coding agent. The credential-free prompt sets up a skill or provides conversation instructions. Copy it again after updates to refresh the skill.
+Tell your coding agent: “Use Midwing for connected APIs. Start with `midwing --help` and `midwing services`. Manage credentials and permissions in the desktop app.”
 
 ## Bring your own API
 
@@ -112,7 +112,7 @@ go test ./...
 go vet ./...
 ```
 
-Tests need no live credentials. See [service validation](internal/midwing/custom.go) and the [bundled agent skill](internal/midwing/skill/SKILL.md).
+Tests need no live credentials. See [service validation](internal/midwing/custom.go).
 
 ## Release a version
 

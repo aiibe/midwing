@@ -3,6 +3,7 @@ package midwing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -145,3 +146,9 @@ func TestRegistrySnapshotFiltersStaleAndUnknownConnections(t *testing.T) {
 		t.Fatal("invalid definition accepted")
 	}
 }
+
+type inaccessibleVault struct{}
+
+func (inaccessibleVault) Get(string) (string, error) { panic("watcher must not read credentials") }
+func (inaccessibleVault) Set(string, string) error   { return errors.New("unavailable") }
+func (inaccessibleVault) Delete(string) error        { return errors.New("unavailable") }

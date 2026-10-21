@@ -69,17 +69,6 @@ func (a *App) CheckForUpdate() (midwing.UpdateInfo, error) {
 }
 
 func (a *App) State() (midwing.DesktopState, error) { return a.store.Snapshot() }
-func (a *App) AgentPrompt() (string, error)         { return a.store.AgentPrompt() }
-func (a *App) CopyAgentPrompt() error {
-	prompt, e := a.store.AgentPrompt()
-	if e != nil {
-		return e
-	}
-	if a.ctx == nil {
-		return fmt.Errorf("desktop app is not ready")
-	}
-	return runtime.ClipboardSetText(a.ctx, prompt)
-}
 
 func (a *App) CreateCustomService(definition midwing.CustomService) error {
 	return a.store.CreateCustomService(definition)

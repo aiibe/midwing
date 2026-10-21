@@ -334,3 +334,10 @@ func TestRefreshRejectsDefinitionChange(t *testing.T) {
 		t.Fatal("stale refresh changed credential")
 	}
 }
+
+func TestActivityTimeJSONName(t *testing.T) {
+	b, e := json.Marshal(Activity{})
+	if e != nil || !strings.Contains(string(b), `"time"`) {
+		t.Fatal("activity time field must be stable")
+	}
+}

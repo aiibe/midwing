@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Moved agent guidance into CLI help and removed the bundled skill and Agent setup screen.
 - Added an agent reminder to review, publish, and verify each new GitHub release.
 - Updated CI to Node.js 24.22.1 LTS and GitHub Actions that use the Node 24 runtime.
 

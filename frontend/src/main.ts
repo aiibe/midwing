@@ -3,7 +3,6 @@ import template from './template.html?raw';
 import { createSettingsRefresh } from './settings-refresh';
 import { setupCustomServiceForm } from './custom-service-form';
 import { setupActivity } from './activity';
-import { setupAgentPrompt } from './agent-setup';
 import './style.css';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import * as app from '../wailsjs/go/main/App';
@@ -248,14 +247,13 @@ document.querySelector('#confirm-delete')!.addEventListener('click', async () =>
 });
 function showTab(tab: string, refresh = true) {
     const activeTab = tab === 'custom' ? 'connections' : tab;
-    for (const id of ['connections', 'activity', 'agent']) document.getElementById(id)!.hidden = id !== activeTab;
+    for (const id of ['connections', 'activity']) document.getElementById(id)!.hidden = id !== activeTab;
     document.getElementById('custom')!.hidden = tab !== 'custom';
     syncServiceVisibility(tab === 'custom');
     document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(el => el.classList.toggle('selected', el.dataset.tab === activeTab));
     message('');
     if (tab === 'connections' && refresh) refreshSettings();
     if (tab === 'activity') void history();
-    if (tab === 'agent') void refreshPrompt();
 }
 const openCustomForm = setupCustomServiceForm({
     isBusy: () => busy,
@@ -265,7 +263,6 @@ const openCustomForm = setupCustomServiceForm({
     reloadAfterChange,
 });
 const history = setupActivity(message);
-const refreshPrompt = setupAgentPrompt(message);
 
 document.querySelector('#add-service')!.addEventListener('click', openCustomForm);
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.addEventListener('click', () => showTab(button.dataset.tab!)));

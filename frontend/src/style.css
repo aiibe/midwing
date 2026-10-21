@@ -124,9 +124,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); f
 .history { margin-top: 20px; font-size: 13px; color: var(--muted); }
 .history-row { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 16px; padding: 14px 0; font-size: 12px; color: var(--text); overflow-wrap: anywhere; }
 .history-row + .history-row { border-top: 1px solid var(--border); }
-#agent-prompt { resize: vertical; padding: 16px; font: 12px/1.8 "SFMono-Regular", Consolas, monospace; }
-#copy-status, #custom-error { margin-top: 12px; }
-#copy-status, .success { color: var(--accent); }
+#custom-error { margin-top: 12px; }
+.success { color: var(--accent); }
 .error { color: #f1b3aa; }
 #message { max-width: 640px; margin: 0 0 20px; padding: 10px 12px; border: 1px solid #344630; border-radius: 6px; background: #1b251e; font-size: 12px; line-height: 1.6; }
 #message:empty { display: none; }
@@ -169,7 +168,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); f
     .connections-layout { grid-template-columns: 1fr; }
     .service-library { border-right: 0; padding-right: 0; }
     .services { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
-    .agent-heading, .endpoint-heading { align-items: flex-start; flex-direction: column; gap: 14px; }
+    .endpoint-heading { align-items: flex-start; flex-direction: column; gap: 14px; }
     .custom-grid, .endpoint-row { grid-template-columns: 1fr; }
     .endpoint-row button { justify-self: start; }
 }
@@ -192,15 +191,6 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); f
 .check + .check { border-top: 0; }
 .check { padding: 9px 0; }
 .access-panel .actions { margin-top: 24px; }
-
-#agent { max-width: 1040px; }
-.agent-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
-.agent-heading button { flex-shrink: 0; }
-#agent-prompt { height: clamp(240px, 55dvh, 520px); color: var(--text); line-height: 1.7; }
-#copy-status:empty { display: none; }
-@media (max-width: 800px) {
-    .agent-heading { align-items: flex-start; flex-direction: column; gap: 16px; }
-}
 
 .connection { justify-content: space-between; align-items: flex-start; gap: 20px; }
 .connection > div:first-child { min-width: 0; }
@@ -286,7 +276,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); f
 .permission-editor .error:empty { display: none; }
 
 #message.error { border-color: #593c3b; background: #2a1e20; }
-#custom > #message, #activity > #message, #agent > #message { margin-top: 16px; }
+#custom > #message, #activity > #message { margin-top: 16px; }
 
 #update-notice { display: block; width: 100%; margin-bottom: 14px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--accent); text-align: left; font: inherit; cursor: pointer; }
 #update-notice[hidden] { display: none; }
