@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.5.2](https://github.com/aiibe/midwing/releases/tag/v0.5.2) — 2026-10-22
+
 ### Fixed
 
 - Make the CI signing keychain available to macOS signing tools while preserving the existing keychain search list.
