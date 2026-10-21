@@ -29,6 +29,17 @@ keychain_password=$(openssl rand -hex 32)
 security create-keychain -p "$keychain_password" "$keychain"
 security set-keychain-settings -lut 21600 "$keychain"
 security unlock-keychain -p "$keychain_password" "$keychain"
+# Signing tools also consult the user search list when resolving identities and chains.
+python3 - "$keychain" <<'PY'
+import shlex
+import subprocess
+import sys
+
+keychain = sys.argv[1]
+existing = shlex.split(subprocess.check_output(['security', 'list-keychains', '-d', 'user'], text=True))
+subprocess.run(['security', 'list-keychains', '-d', 'user', '-s', keychain,
+                *[path for path in existing if path != keychain]], check=True)
+PY
 security import "$certificates/MACOS_CERTIFICATE_P12.p12" -f pkcs12 -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" \
   -T /usr/bin/codesign > /dev/null
 security import "$certificates/MACOS_INSTALLER_CERTIFICATE_P12.p12" -f pkcs12 -k "$keychain" -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD" \
