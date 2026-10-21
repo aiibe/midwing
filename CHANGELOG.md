@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.5.1](https://github.com/aiibe/midwing/releases/tag/v0.5.1) — 2026-10-22
+
 ### Fixed
 
 - Fix macOS release signing failing with “Unknown format in import” when loading PKCS#12 certificates into the CI keychain.
