@@ -84,5 +84,3 @@ Installer secrets and certificates are unused; migrating the code does not
 remove repository secrets or revoke certificates.
 
 Follow the [release process](../README.md#release-a-version) to publish.
-The next planned version for this capability is v0.6.0; implementation changes
-remain under Unreleased until release preparation.
