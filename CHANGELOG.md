@@ -4,6 +4,8 @@
 
 ### Added
 
+- Custom service updates for endpoints, methods, and query parameters. Request changes require reconnecting and reviewing permissions; description edits keep connections active.
+- Optional static headers in custom definitions and updates. Authentication and transport overrides are blocked; header changes require reconnecting.
 - `midwing services delete ID` to remove a custom service, its connection, and saved credential.
 - Release script that versions the changelog and app, then creates a commit and tag.
 - Draft GitHub release notes from the changelog, with installation instructions.

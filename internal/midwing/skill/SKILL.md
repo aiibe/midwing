@@ -13,6 +13,6 @@ Use Midwing for API requests needed by the user's task. The desktop app can stay
 For requested custom service setup:
 
 - Use documented API contracts; ask for missing details. Definitions contain no credentials. Inspect full configuration only when needed.
-- Validate definitions before creating or updating services. Existing services support endpoint description updates only.
+- Validate before creating or updating. Updates replace endpoints and static `headers`; keep identity, base URL, and authentication unchanged. Headers must be non-secret strings and cannot override authentication or request handling. Request changes require reconnecting in the app and reviewing permissions; description edits do not.
 - Use `midwing services delete ID` when asked to remove a custom service. This also removes its connection and saved credential; report any cleanup warning.
 - Ask the user to connect and grant permissions in the desktop app, then inspect endpoint status before calling the service.

@@ -18,7 +18,7 @@ midwing services ID --config         Show full configuration and permissions
 midwing services schema              Show definition schema and examples
 midwing services validate FILE|-     Validate without saving
 midwing services create FILE|-       Create a custom service
-midwing services update FILE|-       Update endpoint descriptions
+midwing services update FILE|-       Update endpoints and static headers
 midwing services delete ID           Delete a custom service and its connection
 midwing get SERVICE PATH             Call an enabled GET endpoint
 midwing post SERVICE PATH JSON       Call an enabled POST endpoint
@@ -137,7 +137,16 @@ func runServicesCLI(args []string, store *midwing.Store, in io.Reader, out io.Wr
 			return err
 		}
 		if len(args) == 2 && (args[0] == "create" || args[0] == "validate" || args[0] == "update") {
-			_, err := fmt.Fprintf(out, "midwing services %s FILE|-\nRead one JSON definition (max 1 MiB). Use services schema for fields and examples. Validation writes no settings; creation rejects existing IDs; update only changes endpoint descriptions on an existing custom service. Credentials are entered in the desktop app.\n", args[0])
+			var behavior string
+			switch args[0] {
+			case "validate":
+				behavior = "Validate without writing settings. ID availability is not checked."
+			case "create":
+				behavior = "Create a custom service; existing IDs are rejected. Enter credentials in the desktop app."
+			case "update":
+				behavior = "Replace endpoints and static headers on an existing custom service.\nKeep identity, base URL, and authentication unchanged.\nChanges to paths, methods, query parameters, or headers require reconnecting and reviewing permissions in the desktop app. Description-only changes do not."
+			}
+			_, err := fmt.Fprintf(out, "midwing services %s FILE|-\nRead one JSON definition (max 1 MiB). Use services schema for fields and examples.\n%s\n", args[0], behavior)
 			return err
 		}
 		if len(args) == 2 && args[0] == "schema" {

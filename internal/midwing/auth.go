@@ -38,6 +38,9 @@ func (s Service) request(ctx context.Context, method, path string, body io.Reade
 	if e != nil {
 		return nil, errors.New("could not create request")
 	}
+	for name, value := range s.Headers {
+		req.Header.Set(name, value)
+	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "Midwing/0.1")
 	if body != nil {

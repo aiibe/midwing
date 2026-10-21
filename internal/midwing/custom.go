@@ -26,6 +26,7 @@ type CustomService struct {
 	BaseURL   string           `json:"baseUrl"`
 	AuthKind  string           `json:"authKind"`
 	Header    string           `json:"header"`
+	Headers   StaticHeaders    `json:"headers,omitempty"`
 	Prefix    string           `json:"prefix"`
 	Password  *PasswordAuth    `json:"password,omitempty"`
 	Endpoints []CustomEndpoint `json:"endpoints"`
@@ -90,6 +91,9 @@ func (d CustomService) compile() (Service, error) {
 	if err := d.validateAuth(); err != nil {
 		return Service{}, err
 	}
+	if err := d.Headers.validate(d.Header); err != nil {
+		return Service{}, err
+	}
 	return d.compileEndpoints()
 }
 
@@ -113,8 +117,7 @@ func (d CustomService) validateAuth() error {
 	if !headerName.MatchString(d.Header) || len(d.Header) > 80 {
 		return errors.New("enter a valid credential header name")
 	}
-	switch strings.ToLower(d.Header) {
-	case "host", "content-length", "connection", "transfer-encoding", "cookie", "content-type", "accept", "user-agent":
+	if managedRequestHeader(strings.ToLower(d.Header)) {
 		return errors.New("use Authorization or a dedicated API credential header")
 	}
 	if len(d.Prefix) > 80 || !credentialPrefix.MatchString(d.Prefix) {
@@ -150,7 +153,12 @@ func (d CustomService) compileEndpoints() (Service, error) {
 	if len(d.Endpoints) == 0 || len(d.Endpoints) > 100 {
 		return Service{}, errors.New("add between 1 and 100 endpoints")
 	}
-	s := Service{ID: d.ID, Name: strings.TrimSpace(d.Name), Description: "Custom API service", Origin: strings.TrimSuffix(d.BaseURL, "/"), AuthKind: d.AuthKind, Header: http.CanonicalHeaderKey(d.Header), Prefix: d.Prefix, Password: d.Password, Custom: true}
+	s := Service{
+		ID: d.ID, Name: strings.TrimSpace(d.Name), Description: "Custom API service",
+		Origin: strings.TrimSuffix(d.BaseURL, "/"), AuthKind: d.AuthKind,
+		Header: http.CanonicalHeaderKey(d.Header), Prefix: d.Prefix,
+		Headers: d.Headers.canonical(), Password: d.Password, Custom: true,
+	}
 	seen := map[string]bool{}
 	for i, endpoint := range d.Endpoints {
 		pattern, hint, e := compilePath(endpoint.Path, true)
@@ -235,6 +243,7 @@ func (e CustomEndpoint) compilePermissions(index int) (map[string]string, []Perm
 }
 
 func (d CustomService) definitionHash() string {
+	d.Headers = d.Headers.canonical()
 	d.Endpoints = append([]CustomEndpoint(nil), d.Endpoints...)
 	for i := range d.Endpoints {
 		d.Endpoints[i].Description = ""
@@ -387,8 +396,8 @@ func pathsOverlap(a, b string) bool {
 	return true
 }
 
-// UpdateCustomService accepts a full definition, but only permits description
-// changes so existing credentials and permission grants remain valid.
+// UpdateCustomService accepts endpoint and static header changes. Request
+// behavior changes invalidate the connection hash until the user reconnects.
 func (s *Store) UpdateCustomService(d CustomService) error {
 	if _, err := d.compile(); err != nil {
 		return &InvalidServiceDefinitionError{Err: err}
@@ -402,8 +411,11 @@ func (s *Store) UpdateCustomService(d CustomService) error {
 			if cfg.CustomServices[i].ID != d.ID {
 				continue
 			}
-			if cfg.CustomServices[i].definitionHash() != d.definitionHash() {
-				return errors.New("update only supports endpoint description changes; keep all other definition fields unchanged")
+			previous, updated := cfg.CustomServices[i], d
+			previous.Headers, updated.Headers = nil, nil
+			previous.Endpoints, updated.Endpoints = nil, nil
+			if previous.definitionHash() != updated.definitionHash() {
+				return errors.New("update only supports endpoint and static header changes; keep all other definition fields unchanged")
 			}
 			cfg.CustomServices[i] = d
 			return s.write(cfg)

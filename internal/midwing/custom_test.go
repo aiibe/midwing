@@ -16,6 +16,7 @@ func tokenDefinition() CustomService {
 func TestCustomTokenServiceSurvivesRestart(t *testing.T) {
 	s := testStore(t)
 	definition := tokenDefinition()
+	definition.Headers = StaticHeaders{"X-API-Version": "2026-08-14"}
 	if e := s.CreateCustomService(definition); e != nil {
 		t.Fatal(e)
 	}
@@ -30,6 +31,9 @@ func TestCustomTokenServiceSurvivesRestart(t *testing.T) {
 	calls := 0
 	c := Client{Store: reopened, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		calls++
+		if r.Header.Get("X-API-Version") != "2026-08-14" {
+			t.Fatal("missing static request header")
+		}
 		if r.URL.Host != "example.test" || r.URL.Path != "/v1/items" || r.Header.Get("X-API-Key") != "private-api-key" || r.URL.Query().Get("filter") != "hello world" {
 			t.Fatalf("unexpected request %s", r.URL)
 		}
@@ -64,6 +68,7 @@ func TestCustomTokenServiceSurvivesRestart(t *testing.T) {
 func TestCustomPOSTRequiresItsOwnPermissionAndSendsJSON(t *testing.T) {
 	s := testStore(t)
 	d := tokenDefinition()
+	d.Headers = StaticHeaders{"X-API-Version": "2026-08-14"}
 	d.Endpoints = []CustomEndpoint{{Path: "/items", Methods: []string{"GET", "POST"}}}
 	if err := s.CreateCustomService(d); err != nil {
 		t.Fatal(err)
@@ -74,6 +79,9 @@ func TestCustomPOSTRequiresItsOwnPermissionAndSendsJSON(t *testing.T) {
 	calls := 0
 	c := Client{Store: s, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		calls++
+		if r.Header.Get("X-API-Version") != "2026-08-14" {
+			t.Fatal("missing static request header")
+		}
 		if r.Method != "POST" || r.URL.Path != "/v1/items" || r.Header.Get("X-API-Key") != "private-api-key" || r.Header.Get("Content-Type") != "application/json" {
 			t.Fatal("incorrect POST request")
 		}
@@ -114,6 +122,7 @@ func TestCustomPOSTRequiresItsOwnPermissionAndSendsJSON(t *testing.T) {
 func TestCustomPasswordService(t *testing.T) {
 	s := testStore(t)
 	d := tokenDefinition()
+	d.Headers = StaticHeaders{"X-API-Version": "2026-08-14"}
 	d.AuthKind = "password"
 	d.Header = "Authorization"
 	d.Prefix = "Bearer "
@@ -125,9 +134,15 @@ func TestCustomPasswordService(t *testing.T) {
 	calls := 0
 	c := Client{Store: s, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
 		calls++
+		if r.Header.Get("X-API-Version") != "2026-08-14" {
+			t.Fatal("missing static request header")
+		}
 		body := `{"items":[]}`
 		switch r.URL.Path {
 		case "/v1/login":
+			if r.Header.Get("Authorization") != "" {
+				t.Fatal("login sent an authentication header")
+			}
 			var payload map[string]string
 			if e := json.NewDecoder(r.Body).Decode(&payload); e != nil {
 				t.Fatal(e)

@@ -23,6 +23,12 @@ const serviceSchemaJSON = `{
     "baseUrl":{"type":"string","format":"uri","pattern":"^https://","description":"HTTPS URL, optional base path; no credentials, queries, fragments, or traversal."},
     "authKind":{"enum":["token","password"]},
     "header":{"type":"string","minLength":1,"maxLength":80,"description":"Credential header, e.g. Authorization or X-API-Key; transport headers and Cookie are prohibited."},
+    "headers":{
+      "type":"object","default":{},
+      "propertyNames":{"type":"string","minLength":1,"maxLength":80,"pattern":"^[!#$%&'*+.^_\u0060|~0-9A-Za-z-]+$"},
+      "additionalProperties":{"type":"string","pattern":"^[^\\u0000-\\u0008\\u000a-\\u001f\\u007f]*$"},
+      "description":"Static non-secret request headers, including login and refresh. Names must be unique ignoring case. Authentication, transport, and Midwing-managed headers are prohibited. Changing headers requires reconnecting; omitted or empty means no additional headers."
+    },
     "prefix":{"type":"string","maxLength":80,"default":"","description":"Printable ASCII; use Bearer followed by a space for bearer tokens. Omitted means an empty prefix."},
     "password":{
       "type":"object","additionalProperties":false,
@@ -53,7 +59,7 @@ const serviceSchemaJSON = `{
     {"if":{"properties":{"authKind":{"const":"token"}}},"then":{"not":{"required":["password"]}}}
   ],
   "examples":[
-    {"id":"example-token","name":"Example Token","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","queryParameters":["limit","cursor"]},{"path":"/items/{id}"}]},
+    {"id":"example-token","name":"Example Token","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","headers":{"X-API-Version":"2026-08-14"},"endpoints":[{"path":"/items","queryParameters":["limit","cursor"]},{"path":"/items/{id}"}]},
     {"id":"example-password","name":"Example Password","baseUrl":"https://api.example.com/v1","authKind":"password","header":"Authorization","prefix":"Bearer ","password":{"loginPath":"/login","emailField":"email","passwordField":"password","tokenField":"session.token","refreshPath":"/refresh"},"endpoints":[{"path":"/items"}]},
     {"id":"example-write","name":"Example Write API","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","methods":["GET","POST"],"queryParameters":["limit"]}]}
   ],

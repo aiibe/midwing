@@ -52,6 +52,7 @@ type Service struct {
 	Examples       []string      `json:"examples"`
 	Password       *PasswordAuth `json:"-"`
 	Header         string        `json:"-"`
+	Headers        StaticHeaders `json:"-"`
 	Prefix         string        `json:"-"`
 	Endpoints      []Endpoint    `json:"-"`
 	Custom         bool          `json:"custom"`

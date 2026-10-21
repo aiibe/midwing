@@ -6,41 +6,32 @@
 
 Give your coding agent a little wingman. 🪽
 
-Midwing is a desktop app and CLI for calling APIs through your connected accounts. Connect an account and choose which requests your agent can make. Tokens stay in your OS keychain.
-
-Bring your own APIs with token or email/password authentication. Manage connections in the app, then close it whenever you like—the CLI keeps working.
+Connect your APIs, choose which requests your coding agent can make, and keep tokens in your OS keychain. Midwing supports token and email/password authentication. Manage connections in the desktop app; the CLI works even when it's closed.
 
 ## Download and install on macOS
 
-Download the universal macOS ZIP from [Releases](https://github.com/aiibe/midwing/releases) for Apple Silicon or Intel. See the [changelog](CHANGELOG.md) for changes. Extract the ZIP, then run:
+Download and extract the universal macOS ZIP from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), then run:
 
 ```sh
 ./install.sh ./Midwing.app
 open "$HOME/Applications/Midwing.app"
 ```
 
-These releases are ad hoc signed, without an Apple Developer ID or Apple notarization. If macOS blocks the app and you trust the download, attempt to open it, then use **System Settings → Privacy & Security → Open Anyway**. See [Apple's instructions](https://support.apple.com/102445). Open the desktop app before using the CLI.
+Releases are ad hoc signed and not notarized. If macOS blocks a trusted download, attempt to open it, then use **System Settings → Privacy & Security → Open Anyway** ([Apple's instructions](https://support.apple.com/102445)). Open the app once before using the CLI.
 
-The installer puts the app in `~/Applications` and the CLI in `~/.local/bin`; add the latter to your PATH if needed. Close Midwing before updating; rerunning the installer preserves your connections. Override the locations with `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`.
+The installer uses `~/Applications` and `~/.local/bin`; add the latter to PATH. Override them with `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`. To update, close Midwing and rerun the installer; connections are preserved.
 
-To verify the ZIP, run `shasum -a 256 -c midwing-v0.1.0-macos-universal.zip.sha256` alongside the matching checksum file, substituting your version.
+Verify downloads with `shasum -a 256 -c midwing-vVERSION-macos-universal.zip.sha256`, using your version and the matching checksum file.
 
-Release builds check GitHub for updates on launch and at most daily, without sending account credentials. Follow the update notice to download and install a newer version manually.
+Release builds check GitHub for updates on launch and at most daily, without sending credentials. Updates are installed manually. See the [changelog](CHANGELOG.md) for changes.
 
 ## Build and install from source
 
 Requires Go 1.24+, Node 22.20+ on the 22.x line or Node 24.12+, and the [Wails v2 native prerequisites](https://v2.wails.io/docs/gettingstarted/installation/).
 
-Run from the repository root:
-
 ```sh
 go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 build
-```
-
-On macOS, install the app and CLI:
-
-```sh
-./scripts/install.sh
+./scripts/install.sh # macOS
 midwing
 ```
 
@@ -48,7 +39,7 @@ On Windows and Linux, put the executable from `build/bin` on PATH. Linux also ne
 
 ## Take it for a spin
 
-Run `midwing` to open the app and [add your API](#bring-your-own-api). These examples use `my-service` with GET and POST allowed on `/items`, and GET on `/items/{id}`:
+Run `midwing` to [add your API](#bring-your-own-api) and connect it. With the corresponding paths and methods enabled:
 
 ```sh
 midwing services
@@ -58,19 +49,19 @@ midwing post my-service /items '{"name":"Example"}'
 midwing get my-service /items/123
 ```
 
-The CLI returns JSON, one page per call. Errors go to stderr with a nonzero exit code. Use `midwing --help` or append `--help` to a command for details.
+The CLI returns JSON, one page per call; errors go to stderr with a nonzero exit code. Append `--help` to any command for details.
 
 ### Introduce your agent
 
-Open **Agent setup → Copy prompt** and paste it into your coding agent. It guides the agent through installing a skill and checking the CLI, or following the instructions in conversation if skills are unsupported. The prompt contains no credentials. Copy it again to refresh an installed skill after an update.
+Paste **Agent setup → Copy prompt** into your coding agent. The credential-free prompt sets up a skill or provides conversation instructions. Copy it again after updates to refresh the skill.
 
 ## Bring your own API
 
-On **Connections**, click **+ Add service**. Enter a name, CLI ID, HTTPS base URL, authentication settings, and allowed paths such as `/items` or `/items/{id}`. Select GET and/or POST for each path and list any allowed query names. Each method has a separate permission; connect the service and select the requests agents may make.
+On **Connections → + Add service**, enter a name, CLI ID, HTTPS base URL, authentication settings, and paths such as `/items` or `/items/{id}`. Choose GET/POST and allowed query names per path. Connect the service and grant permissions separately for each method.
 
-For bearer tokens, use header `Authorization` and prefix `Bearer` in the form. For raw API keys, use the API's header (such as `X-API-Key`) and leave the prefix empty.
-
-Email/password services need a JSON login endpoint and a token response field. Only the returned token is stored. An optional refresh endpoint renews it before each API request.
+- **Bearer token:** header `Authorization`, prefix `Bearer` in the app.
+- **API key:** the API's header (e.g. `X-API-Key`), empty prefix.
+- **Email/password:** a JSON login endpoint and token response field. Only the token is stored; an optional refresh endpoint renews it before each API request.
 
 To create a service through the CLI:
 
@@ -80,21 +71,31 @@ midwing services validate service.json
 midwing services create service.json
 ```
 
-Omitting `methods` means GET only. This definition enables GET and POST; POST accepts a JSON body up to 1 MiB:
+Example definition (omitted `methods` defaults to GET; POST bodies are JSON, up to 1 MiB):
 
 ```json
 {"id":"my-service","name":"My service","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","methods":["GET","POST"],"queryParameters":["limit"]}]}
 ```
 
-CLI definitions use `"Bearer "` with a trailing space. Enter credentials in the desktop app after creation.
+CLI bearer prefixes need a trailing space: `"Bearer "`. Enter credentials in the app after creation.
 
-Edit permission descriptions in the app or with `midwing services update service.json`. Other definition changes require deleting and recreating the service. Use `midwing services delete my-service` or **Delete service** in the app to remove a custom definition, its connection, and saved credential. **Disconnect** removes only the connection and credential.
+Optional `"headers": {"X-API-Version": "2026-08-14"}` adds non-secret headers to API, login, and refresh requests. Authentication, transport, and Midwing-managed headers are reserved.
+
+Use `midwing services update service.json` with a full definition:
+
+- Replace endpoints, methods, query parameters, and static headers; keep ID, name, base URL, and authentication unchanged.
+- Omitted endpoints are removed; omitted or empty `headers` removes static headers.
+- Request changes require reconnecting and reviewing permissions. Saved credentials and selections remain stored. Description-only edits, also available in the app, keep connections active.
+
+`midwing services delete my-service` or **Delete service** removes the definition, connection, and credential. **Disconnect** keeps the definition.
 
 ## Under the wing
 
-Midwing checks endpoint method and connection permissions before API requests. Tokens live in the OS keychain; settings and activity are stored in the OS user config directory under `midwing/`. Activity excludes query values and request/response bodies.
-
-Requests use fixed HTTPS destinations, disable redirects, and time out after 30 seconds. Responses must be JSON and are limited to 8 MiB (1 MiB for authentication). Midwing runs locally without a background service or hosted backend. Processes with unrestricted access under your OS user can still access the credential store.
+- Local app and CLI, with no background service or hosted backend.
+- Requests require endpoint and connection permissions, use fixed HTTPS destinations, disable redirects, and time out after 30 seconds.
+- JSON responses are limited to 8 MiB (1 MiB for authentication).
+- Tokens stay in the OS keychain; settings and activity live under `midwing/` in the OS user config directory. Activity excludes query values and request/response bodies.
+- Processes with unrestricted access as your OS user can still access the credential store.
 
 ## Tinker with it
 
@@ -111,22 +112,20 @@ go test ./...
 go vet ./...
 ```
 
-Tests use an in-memory credential vault and HTTP transport; no live credentials are needed. Service validation lives in [internal/midwing/services.go](internal/midwing/services.go), and the bundled agent skill lives in [internal/midwing/skill/SKILL.md](internal/midwing/skill/SKILL.md).
+Tests need no live credentials. See [service validation](internal/midwing/custom.go) and the [bundled agent skill](internal/midwing/skill/SKILL.md).
 
 ## Release a version
 
-Add notable changes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md). Choose a patch for fixes or a minor for new capabilities, including during `0.x`.
-
-Commit all changes. From a clean, up-to-date release branch, run (requires Python 3):
+Record changes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md). Use a patch for fixes or a minor for new capabilities, including during `0.x`. Commit changes, then run from a clean, up-to-date release branch (Python 3 required):
 
 ```sh
 git fetch origin --tags
 ./scripts/release.sh 0.2.0
 ```
 
-The script versions the pending changelog entries, updates `wails.json`, and creates a commit and annotated tag. Notes must be nonempty and the version newer than existing releases.
+The script versions nonempty changelog entries, updates `wails.json`, and creates a commit and annotated tag. The version must be newer than existing releases.
 
-Review the commit and tag, then run the printed atomic push command. CI builds and checks the app, then creates a **draft** GitHub release using the changelog section and installation instructions. Review and publish the draft on GitHub.
+Review the commit and tag, then run the printed atomic push command. CI builds and checks the app and creates a **draft** GitHub release. Review and publish it, then verify the release is public.
 
 Preview notes and test release tooling:
 

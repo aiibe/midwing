@@ -37,7 +37,7 @@ func definitionObject(data []byte, required, optional string) (map[string]json.R
 }
 
 func validateDefinitionJSON(data []byte) error {
-	fields, err := definitionObject(data, "id name baseUrl authKind header endpoints", "prefix password")
+	fields, err := definitionObject(data, "id name baseUrl authKind header endpoints", "prefix password headers")
 	if err != nil {
 		return err
 	}
