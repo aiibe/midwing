@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.6.0](https://github.com/aiibe/midwing/releases/tag/v0.6.0) — 2026-10-22
+
 ### Added
 
 - CLI setup in the macOS app installs and removes a per-user command link, recognizes working PKG links, and offers repair after moving the app. Unrelated commands are preserved, with terminal PATH and migration guidance.
