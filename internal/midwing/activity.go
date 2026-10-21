@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -24,14 +23,37 @@ type Activity struct {
 	Status    int       `json:"status,omitempty"`
 }
 
-func (s *Store) Record(a Activity) error {
+type ActivityHistory struct {
+	Entries []Activity `json:"entries"`
+	Warning string     `json:"warning,omitempty"`
+}
+
+// ErrInvalidActivityHistory accompanies recovered entries when damaged records were skipped.
+var ErrInvalidActivityHistory = errors.New("some activity records were damaged and skipped")
+
+func (a Activity) marshal() ([]byte, error) {
 	data, err := json.Marshal(a)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	data = append(data, '\n')
 	if len(data) > activityRecordLimit {
-		return errors.New("activity record exceeds size limit")
+		return nil, errors.New("activity record exceeds size limit")
+	}
+	return data, nil
+}
+
+func (a Activity) validateRequestSize() error {
+	// Reserve room for the longest outcome and a three-digit HTTP status.
+	a.Outcome, a.Status = "success", 999
+	_, err := a.marshal()
+	return err
+}
+
+func (s *Store) Record(a Activity) error {
+	data, err := a.marshal()
+	if err != nil {
+		return err
 	}
 	return s.lockedFile("activity.lock", func() error {
 		path := filepath.Join(s.Dir, "activity.jsonl")
@@ -81,15 +103,18 @@ func (s *Store) History() ([]Activity, error) {
 	if err != nil {
 		return out, err
 	}
-	// Decode the bounded snapshots after releasing the activity lock.
+	// Decode bounded JSONL snapshots after releasing the activity lock. A damaged
+	// record must not hide valid later records or entries in the other log.
+	var warning error
 	for _, data := range snapshots {
-		d := json.NewDecoder(bytes.NewReader(data))
-		for {
+		for line := range bytes.SplitSeq(data, []byte{'\n'}) {
+			if len(bytes.TrimSpace(line)) == 0 {
+				continue
+			}
 			var a Activity
-			if err := d.Decode(&a); errors.Is(err, io.EOF) {
-				break
-			} else if err != nil {
-				return out, fmt.Errorf("invalid activity history: %w", err)
+			if err := json.Unmarshal(line, &a); err != nil {
+				warning = ErrInvalidActivityHistory
+				continue
 			}
 			out = append(out, a)
 			if len(out) > activityHistoryLimit {
@@ -97,7 +122,7 @@ func (s *Store) History() ([]Activity, error) {
 			}
 		}
 	}
-	return out, nil
+	return out, warning
 }
 
 // readActivityTail never scans more than one log's budget plus a boundary byte.

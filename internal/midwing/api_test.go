@@ -28,7 +28,7 @@ func TestAllowlist(t *testing.T) {
 
 func TestPermissionsAndCredentialPrivacy(t *testing.T) {
 	s := testStore(t)
-	if e := s.SaveService("sample-api", "secret-token", []string{"profile"}); e != nil {
+	if e := saveTestService(s, "sample-api", "secret-token", []string{"profile"}); e != nil {
 		t.Fatal(e)
 	}
 	called := 0
@@ -63,7 +63,7 @@ func TestResponseAndRedirect(t *testing.T) {
 		wantError bool
 	}{{`{"login":"octocat"}`, 200, false}, {`{"message":"secret-token"}`, 200, true}, {`{"token":"secret-token"}`, 401, true}, {`not json`, 200, true}, {``, 204, false}, {``, 200, false}, {` `, 200, true}, {``, 302, true}} {
 		s := testStore(t)
-		if e := s.SaveService("sample-api", "secret-token", []string{"profile"}); e != nil {
+		if e := saveTestService(s, "sample-api", "secret-token", []string{"profile"}); e != nil {
 			t.Fatal(e)
 		}
 		c := Client{Store: s, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
@@ -96,10 +96,10 @@ func TestResponseAndRedirect(t *testing.T) {
 
 func TestRotateAndRemove(t *testing.T) {
 	s := testStore(t)
-	if e := s.SaveService("sample-api", "first", []string{"profile"}); e != nil {
+	if e := saveTestService(s, "sample-api", "first", []string{"profile"}); e != nil {
 		t.Fatal(e)
 	}
-	if e := s.SaveService("sample-api", "second", []string{"items"}); e != nil {
+	if e := saveTestService(s, "sample-api", "second", []string{"items"}); e != nil {
 		t.Fatal(e)
 	}
 	if len(s.Vault.(memoryVault)) != 1 {
@@ -117,7 +117,7 @@ func TestRotateAndRemove(t *testing.T) {
 func TestActivityFailurePreservesSanitizedCallError(t *testing.T) {
 	for _, status := range []int{200, 401} {
 		s := testStore(t)
-		if err := s.SaveService("sample-api", "private-token", []string{"profile"}); err != nil {
+		if err := saveTestService(s, "sample-api", "private-token", []string{"profile"}); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Mkdir(filepath.Join(s.Dir, "activity.jsonl"), 0700); err != nil {
@@ -146,7 +146,7 @@ func TestInvalidRequestBodiesNeverReachService(t *testing.T) {
 	if err := store.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+	if err := saveTestService(store, d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
 		t.Fatal(err)
 	}
 	client := Client{Store: store, HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {

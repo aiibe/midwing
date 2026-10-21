@@ -5,11 +5,17 @@ export function setupActivity(message: (text: string, error?: boolean) => void) 
     async function history() {
         const request = ++historyRequest;
         try {
-            const rows = await app.Activity();
+            const {entries: rows, warning} = await app.Activity();
             if (request !== historyRequest) return;
+            const notice = document.querySelector<HTMLElement>('#history-warning')!;
+            notice.textContent = warning || '';
+            notice.hidden = !warning;
             const container = document.querySelector('#history')!;
             container.replaceChildren();
-            if (!rows.length) { container.textContent = 'No activity yet. Run an API command to see it here.'; return; }
+            if (!rows.length) {
+                container.textContent = warning ? 'No readable activity entries.' : 'No activity yet. Run an API command to see it here.';
+                return;
+            }
             for (const row of rows.reverse()) {
                 const el = document.createElement('div'); el.className = 'history-row';
                 for (const value of [new Date(row.time).toLocaleString(), row.operation, row.outcome + (row.status ? ` · ${row.status}` : '')]) {

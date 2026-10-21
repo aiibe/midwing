@@ -5,13 +5,18 @@
 ### Security
 
 - Limit activity logs to two 1 MiB files, bound reads of older oversized logs, and keep history access from blocking settings operations.
-- Bind connection approvals to the service definition reviewed in the app; reject stale token and password approvals after request settings change.
+- Require reviewed service revisions for all connection approvals; reject stale token and password approvals after request settings change.
 - Require Go 1.27.3 or newer for patched HTTPS handling and certificate validation; CI now blocks known vulnerabilities in reachable Go code.
 - Upgrade Wails to 2.17.0 for compiler compatibility and development-server security fixes.
 
 ### Changed
 
 - Require macOS 13 or newer, matching Go 1.27; update app bundle metadata.
+
+### Fixed
+
+- Reject operations that exceed the activity record limit before sending requests, avoiding a logging failure after a successful POST.
+- Recover valid activity entries from damaged logs and display a warning instead of hiding newer history.
 
 ## [0.4.0](https://github.com/aiibe/midwing/releases/tag/v0.4.0) — 2026-10-21
 

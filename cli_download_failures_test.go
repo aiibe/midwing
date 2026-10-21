@@ -59,7 +59,7 @@ func TestDownloadActivityFailureRemovesOutput(t *testing.T) {
 	if err := store.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(store, d.ID, "secret-token", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Mkdir(filepath.Join(store.Dir, "activity.jsonl"), 0700); err != nil {

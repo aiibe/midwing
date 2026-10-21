@@ -67,12 +67,8 @@ func (s *Store) List() ([]Connection, error) {
 	return state.Connections, err
 }
 
-func (s *Store) SaveService(service, token string, permissions []string) error {
-	return s.saveToken(service, token, permissions, nil)
-}
-
-// SaveServiceRevision saves token approvals for the definition reviewed by the user.
-func (s *Store) SaveServiceRevision(service, revision, token string, permissions []string) error {
+// SaveService saves token approvals for the definition reviewed by the user.
+func (s *Store) SaveService(service, revision, token string, permissions []string) error {
 	definition, err := s.serviceAtRevision(service, revision)
 	if err != nil {
 		return err
@@ -80,7 +76,7 @@ func (s *Store) SaveServiceRevision(service, revision, token string, permissions
 	if definition.AuthKind != "token" {
 		return errors.New("service requires email/password login")
 	}
-	return s.saveToken(service, token, permissions, &definition)
+	return s.saveToken(definition, token, permissions)
 }
 
 func (s *Store) serviceAtRevision(service, revision string) (Service, error) {
@@ -94,11 +90,12 @@ func (s *Store) serviceAtRevision(service, revision string) (Service, error) {
 	return definition, nil
 }
 
-func (s *Store) saveToken(service, token string, permissions []string, expected *Service) error {
+func (s *Store) saveToken(expected Service, token string, permissions []string) error {
 	if strings.TrimSpace(token) == "" || strings.ContainsAny(token, "\r\n") {
 		return errors.New("invalid credential")
 	}
 	return s.locked(func() error {
+		service := expected.ID
 		cfg, e := s.read()
 		if e != nil {
 			return e
@@ -107,10 +104,7 @@ func (s *Store) saveToken(service, token string, permissions []string, expected 
 		if e != nil {
 			return e
 		}
-		if expected == nil && definition.AuthKind != "token" {
-			return errors.New("service requires email/password login")
-		}
-		if expected != nil && (definition.DefinitionHash != expected.DefinitionHash || definition.Origin != expected.Origin) {
+		if definition.DefinitionHash != expected.DefinitionHash || definition.Origin != expected.Origin {
 			return errors.New("service changed; reload and review permissions before reconnecting")
 		}
 		if e = validatePermissions(definition, permissions); e != nil {

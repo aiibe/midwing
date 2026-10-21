@@ -87,7 +87,7 @@ func TestSettingsWatcherAtomicWritesAndShutdown(t *testing.T) {
 
 func TestSnapshotNoCredentialsAndDefinitionValidation(t *testing.T) {
 	s := testStore(t)
-	if err := s.SaveService("sample-api", "never-export-this", []string{"profile"}); err != nil {
+	if err := saveTestService(s, "sample-api", "never-export-this", []string{"profile"}); err != nil {
 		t.Fatal(err)
 	}
 	s.Vault = inaccessibleVault{}
@@ -114,7 +114,7 @@ func TestSnapshotNoCredentialsAndDefinitionValidation(t *testing.T) {
 
 func TestRegistrySnapshotFiltersStaleAndUnknownConnections(t *testing.T) {
 	s := testStore(t)
-	if err := s.SaveService("sample-api", "private-token", []string{"profile"}); err != nil {
+	if err := saveTestService(s, "sample-api", "private-token", []string{"profile"}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := s.read()

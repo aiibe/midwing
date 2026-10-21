@@ -25,7 +25,7 @@ func TestDiscoveryGrantedPermissions(t *testing.T) {
 	if err := store.CreateCustomService(definition); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService("sample-api", "private-token", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(store, "sample-api", "private-token", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	store.Vault = unreadableVault{}
@@ -61,7 +61,7 @@ func TestDiscoveryPOSTOnlyGrant(t *testing.T) {
 	if err := store.CreateCustomService(definition); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService(definition.ID, "private-token", []string{"endpoint-1-post"}); err != nil {
+	if err := saveTestService(store, definition.ID, "private-token", []string{"endpoint-1-post"}); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer

@@ -30,6 +30,24 @@ func testStore(t *testing.T) *Store {
 	return &Store{Dir: t.TempDir(), Vault: memoryVault{}}
 }
 
+// Test setup approves the current definition; approval tests supply revisions explicitly.
+func saveTestService(store *Store, id, token string, permissions []string) error {
+	service, err := store.Service(id)
+	if err != nil {
+		return err
+	}
+	return store.SaveService(id, service.DefinitionHash, token, permissions)
+}
+
+func reviewedRevision(t *testing.T, store *Store, id string) string {
+	t.Helper()
+	service, err := store.Service(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return service.DefinitionHash
+}
+
 type stringBody struct{ *strings.Reader }
 
 func (stringBody) Close() error { return nil }

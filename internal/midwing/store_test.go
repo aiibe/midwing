@@ -35,7 +35,7 @@ func TestSettingsRequireObject(t *testing.T) {
 func TestTokenSaveRejectsPasswordService(t *testing.T) {
 	registerPasswordFixture(t)
 	s := testStore(t)
-	if err := s.SaveService("sample-auth", "token", []string{"sheets"}); err == nil {
+	if err := saveTestService(s, "sample-auth", "token", []string{"sheets"}); err == nil {
 		t.Fatal("password service accepted a direct token")
 	}
 	if len(s.Vault.(memoryVault)) != 0 {
@@ -49,7 +49,7 @@ func TestTokenSaveRejectsPasswordService(t *testing.T) {
 
 func TestDuplicateConnectionsRejectedBeforeMutation(t *testing.T) {
 	s := testStore(t)
-	if err := s.SaveService("sample-api", "old", []string{"profile"}); err != nil {
+	if err := saveTestService(s, "sample-api", "old", []string{"profile"}); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := s.read()
@@ -63,7 +63,7 @@ func TestDuplicateConnectionsRejectedBeforeMutation(t *testing.T) {
 	if _, err := s.RegistrySnapshot(); err == nil {
 		t.Fatal("duplicate connections accepted")
 	}
-	if err := s.SaveService("sample-api", "replacement", []string{"profile"}); err == nil {
+	if err := saveTestService(s, "sample-api", "replacement", []string{"profile"}); err == nil {
 		t.Fatal("duplicate connections mutated")
 	}
 	if len(s.Vault.(memoryVault)) != 1 {
@@ -77,7 +77,7 @@ func TestRefreshRejectsDefinitionChange(t *testing.T) {
 	if err := s.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveService(d.ID, "old-token", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(s, d.ID, "old-token", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	rows, err := s.List()

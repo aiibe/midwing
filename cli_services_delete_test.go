@@ -36,7 +36,7 @@ func TestServicesDelete(t *testing.T) {
 					t.Fatal(err)
 				}
 				if tc.connected {
-					if err := store.SaveService(id, id+"-token", []string{"endpoint-1"}); err != nil {
+					if err := saveTestService(store, id, id+"-token", []string{"endpoint-1"}); err != nil {
 						t.Fatal(err)
 					}
 				}

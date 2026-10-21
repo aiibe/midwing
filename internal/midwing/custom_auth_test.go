@@ -17,7 +17,7 @@ func TestCustomTokenServiceSurvivesRestart(t *testing.T) {
 	if e := s.CreateCustomService(definition); e != nil {
 		t.Fatal(e)
 	}
-	if e := s.SaveService(definition.ID, "private-api-key", []string{"endpoint-1"}); e != nil {
+	if e := saveTestService(s, definition.ID, "private-api-key", []string{"endpoint-1"}); e != nil {
 		t.Fatal(e)
 	}
 	reopened := &Store{Dir: s.Dir, Vault: s.Vault}
@@ -70,7 +70,7 @@ func TestCustomPOSTRequiresItsOwnPermissionAndSendsJSON(t *testing.T) {
 	if err := s.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	calls := 0
@@ -94,7 +94,7 @@ func TestCustomPOSTRequiresItsOwnPermissionAndSendsJSON(t *testing.T) {
 	if _, err := c.CallWithBody(context.Background(), d.ID, "POST", "/items", json.RawMessage(`{"name":"private-body-value"}`)); err == nil || calls != 0 {
 		t.Fatal("POST bypassed its separate permission")
 	}
-	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+	if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := c.CallWithBody(context.Background(), d.ID, "POST", "/items", json.RawMessage(`{"name":"private-body-value"}`)); err != nil || calls != 1 {
@@ -163,7 +163,7 @@ func TestCustomPasswordService(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Body: ioBody(body)}, nil
 	})}}
-	if e := c.ConnectPassword(context.Background(), d.ID, "me@example.com", "password-secret", []string{"endpoint-1"}); e != nil {
+	if e := c.ConnectPassword(context.Background(), d.ID, reviewedRevision(t, c.Store, d.ID), "me@example.com", "password-secret", []string{"endpoint-1"}); e != nil {
 		t.Fatal(e)
 	}
 	if _, e := c.Call(context.Background(), d.ID, "GET", "/items"); e != nil || calls != 3 {

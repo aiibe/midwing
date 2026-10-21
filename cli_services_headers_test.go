@@ -19,7 +19,7 @@ func TestServicesStaticHeaders(t *testing.T) {
 			t.Fatalf("%s rejected static headers: %v", command, err)
 		}
 	}
-	if err := store.SaveService("example", "private-token", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(store, "example", "private-token", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, definition := range []string{
@@ -47,7 +47,7 @@ func TestServicesStaticHeaders(t *testing.T) {
 		if config.Definition.Headers["X-API-Version"] != expected.Headers["X-API-Version"] {
 			t.Fatalf("header update was not persisted: %s", out.String())
 		}
-		if err := store.SaveService("example", "private-token", []string{"endpoint-1"}); err != nil {
+		if err := saveTestService(store, "example", "private-token", []string{"endpoint-1"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -93,7 +93,7 @@ func TestServicesUpdateEndpointsAndHeaders(t *testing.T) {
 	if err := runServicesCLI([]string{"create", "-"}, store, strings.NewReader(serviceJSON), &out); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService("example", "private-token", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(store, "example", "private-token", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	var expanded midwing.CustomService
@@ -127,7 +127,7 @@ func TestServicesUpdateEndpointsAndHeaders(t *testing.T) {
 	if err != nil || !bytes.Equal(actual, input) {
 		t.Fatalf("expanded definition was not saved: %s (%v)", actual, err)
 	}
-	if err := store.SaveService("example", "private-token", []string{"endpoint-1", "endpoint-2-post"}); err != nil {
+	if err := saveTestService(store, "example", "private-token", []string{"endpoint-1", "endpoint-2-post"}); err != nil {
 		t.Fatal(err)
 	}
 	out.Reset()

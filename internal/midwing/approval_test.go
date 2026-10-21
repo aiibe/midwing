@@ -47,7 +47,7 @@ func TestStaleConnectionApprovals(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := s.saveToken(d.ID, "existing-token", []string{"endpoint-1"}, &reviewed); err != nil {
+				if err := s.saveToken(reviewed, "existing-token", []string{"endpoint-1"}); err != nil {
 					t.Fatal(err)
 				}
 				// The app still displays /public while another process updates its permission ID.
@@ -72,9 +72,9 @@ func TestStaleConnectionApprovals(t *testing.T) {
 					return nil, nil
 				})}}
 				if password {
-					err = client.ConnectPasswordRevision(context.Background(), d.ID, revision, "me@example.com", "password-secret", []string{"endpoint-1"})
+					err = client.ConnectPassword(context.Background(), d.ID, revision, "me@example.com", "password-secret", []string{"endpoint-1"})
 				} else {
-					err = s.SaveServiceRevision(d.ID, revision, "new-token", []string{"endpoint-1"})
+					err = s.SaveService(d.ID, revision, "new-token", []string{"endpoint-1"})
 				}
 				if err == nil || !strings.Contains(err.Error(), "review permissions") {
 					t.Fatalf("stale approval accepted: %v", err)
@@ -128,9 +128,9 @@ func TestReviewedConnectionApprovals(t *testing.T) {
 					return &http.Response{StatusCode: 200, Body: ioBody(`{"token":"new-token"}`)}, nil
 				})}}
 				if password {
-					err = client.ConnectPasswordRevision(context.Background(), d.ID, revision, "me@example.com", "password-secret", []string{"endpoint-1"})
+					err = client.ConnectPassword(context.Background(), d.ID, revision, "me@example.com", "password-secret", []string{"endpoint-1"})
 				} else {
-					err = s.SaveServiceRevision(d.ID, revision, "new-token", []string{"endpoint-1"})
+					err = s.SaveService(d.ID, revision, "new-token", []string{"endpoint-1"})
 				}
 				if err != nil {
 					t.Fatal(err)
@@ -161,7 +161,7 @@ func TestPasswordApprovalChangesDuringLogin(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Body: ioBody(`{"token":"new-token"}`)}, nil
 	})}}
-	err = client.ConnectPasswordRevision(context.Background(), d.ID, reviewed.DefinitionHash, "me@example.com", "password-secret", []string{"endpoint-1"})
+	err = client.ConnectPassword(context.Background(), d.ID, reviewed.DefinitionHash, "me@example.com", "password-secret", []string{"endpoint-1"})
 	if err == nil || !strings.Contains(err.Error(), "review permissions") {
 		t.Fatalf("login saved stale approval: %v", err)
 	}

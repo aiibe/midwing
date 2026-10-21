@@ -81,7 +81,7 @@ func (a *App) UpdatePermissionDescriptions(id string, descriptions map[string]st
 	return changeResult(a.store.UpdatePermissionDescriptions(id, descriptions))
 }
 func (a *App) SaveConnection(service, revision, token string, permissions []string) (midwing.ChangeResult, error) {
-	return changeResult(a.store.SaveServiceRevision(service, revision, token, permissions))
+	return changeResult(a.store.SaveService(service, revision, token, permissions))
 }
 func (a *App) ConnectPassword(service, revision, email, password string, permissions []string) (midwing.ChangeResult, error) {
 	if a.ctx == nil {
@@ -90,12 +90,20 @@ func (a *App) ConnectPassword(service, revision, email, password string, permiss
 	if err := a.ctx.Err(); err != nil {
 		return midwing.ChangeResult{}, err
 	}
-	return changeResult((&midwing.Client{Store: a.store}).ConnectPasswordRevision(a.ctx, service, revision, email, password, permissions))
+	return changeResult((&midwing.Client{Store: a.store}).ConnectPassword(a.ctx, service, revision, email, password, permissions))
 }
 func (a *App) RemoveConnection(service string) (midwing.ChangeResult, error) {
 	return changeResult(a.store.RemoveService(service))
 }
-func (a *App) Activity() ([]midwing.Activity, error) { return a.store.History() }
+func (a *App) Activity() (midwing.ActivityHistory, error) {
+	entries, err := a.store.History()
+	history := midwing.ActivityHistory{Entries: entries}
+	if errors.Is(err, midwing.ErrInvalidActivityHistory) {
+		history.Warning = err.Error()
+		err = nil
+	}
+	return history, err
+}
 func changeResult(err error) (midwing.ChangeResult, error) {
 	var committed *midwing.CommittedChangeError
 	if errors.As(err, &committed) {

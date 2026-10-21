@@ -76,6 +76,9 @@ func (c *Client) call(ctx context.Context, service, method, path string, request
 		return nil, e
 	}
 	a := Activity{Time: time.Now().UTC(), Operation: service + " " + method + " " + operation, Outcome: "failed"}
+	if err := a.validateRequestSize(); err != nil {
+		return nil, fmt.Errorf("request cannot be recorded: %w", err)
+	}
 	result, callErr := c.execute(ctx, s, state.Connections, permission, method, path, requestBody, options, &a)
 	if callErr == nil && requireJSON && len(result) != 0 && !json.Valid(result) {
 		result = nil

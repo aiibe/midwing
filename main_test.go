@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"midwing/internal/midwing"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -54,6 +56,36 @@ func TestCommittedChangesReturnStructuredWarnings(t *testing.T) {
 	result, err = changeResult(failure)
 	if !errors.Is(err, failure) || result.Warning != "" {
 		t.Fatal("uncommitted failure reported as success")
+	}
+}
+
+func TestDesktopActivityReturnsRecoveredEntriesAndWarning(t *testing.T) {
+	store := &midwing.Store{Dir: t.TempDir()}
+	archive := filepath.Join(store.Dir, "activity.1.jsonl")
+	if err := os.WriteFile(archive, []byte("{\"status\":200}\n{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Record(midwing.Activity{Operation: "new request", Status: 201}); err != nil {
+		t.Fatal(err)
+	}
+	app := &App{store: store}
+	history, err := app.Activity()
+	if err != nil || history.Warning == "" || len(history.Entries) != 2 || history.Entries[1].Operation != "new request" {
+		t.Fatalf("recovered history hidden by error: %+v, %v", history, err)
+	}
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+	history, err = app.Activity()
+	if err != nil || history.Warning != "" || len(history.Entries) != 1 {
+		t.Fatalf("clean history retained warning: %+v, %v", history, err)
+	}
+	if err := os.Mkdir(archive, 0700); err != nil {
+		t.Fatal(err)
+	}
+	history, err = app.Activity()
+	if err == nil || history.Warning != "" {
+		t.Fatalf("I/O error treated as recoverable corruption: %+v, %v", history, err)
 	}
 }
 

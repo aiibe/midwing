@@ -106,7 +106,7 @@ func TestStaticHeaderUpdatesRequireReconnect(t *testing.T) {
 	if err := s.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := s.read()
@@ -134,7 +134,7 @@ func TestStaticHeaderUpdatesRequireReconnect(t *testing.T) {
 		if _, err := client.Call(context.Background(), d.ID, "GET", "/items"); err == nil || !strings.Contains(err.Error(), "connect") {
 			t.Fatalf("call did not require reconnecting: %v", err)
 		}
-		if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+		if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 			t.Fatal(err)
 		}
 		before, err = s.read()
@@ -146,7 +146,7 @@ func TestStaticHeaderUpdatesRequireReconnect(t *testing.T) {
 	if err := s.UpdateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	d.Headers = StaticHeaders{"x-test": "ok"}

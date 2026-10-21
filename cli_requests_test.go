@@ -26,7 +26,7 @@ func TestOutputFile(t *testing.T) {
 		if err := store.CreateCustomService(d); err != nil {
 			t.Fatal(err)
 		}
-		if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+		if err := saveTestService(store, d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
 			t.Fatal(err)
 		}
 		previous := http.DefaultTransport
@@ -127,7 +127,7 @@ func TestOutputOptionsAndEmptyResponses(t *testing.T) {
 	if err := store.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+	if err := saveTestService(store, d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, method := range []string{"get", "post"} {

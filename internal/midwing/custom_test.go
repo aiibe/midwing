@@ -66,12 +66,12 @@ func TestCustomDefinitionValidation(t *testing.T) {
 
 func TestCustomDeletionPreservesOtherServices(t *testing.T) {
 	s := testStore(t)
-	s.SaveService("sample-api", "sample-api-secret", []string{"profile"})
+	saveTestService(s, "sample-api", "sample-api-secret", []string{"profile"})
 	d := tokenDefinition()
 	if e := s.CreateCustomService(d); e != nil {
 		t.Fatal(e)
 	}
-	s.SaveService(d.ID, "custom-secret", []string{"endpoint-1"})
+	saveTestService(s, d.ID, "custom-secret", []string{"endpoint-1"})
 	if e := s.DeleteCustomService(d.ID); e != nil {
 		t.Fatal(e)
 	}
@@ -91,7 +91,7 @@ func TestDefinitionChangeCannotReuseCredential(t *testing.T) {
 	s := testStore(t)
 	d := tokenDefinition()
 	s.CreateCustomService(d)
-	s.SaveService(d.ID, "old-secret", []string{"endpoint-1"})
+	saveTestService(s, d.ID, "old-secret", []string{"endpoint-1"})
 	old, e := s.Service(d.ID)
 	if e != nil {
 		t.Fatal(e)
@@ -111,7 +111,7 @@ func TestDefinitionChangeCannotReuseCredential(t *testing.T) {
 	if _, e := c.Call(context.Background(), d.ID, "GET", "/items"); e == nil {
 		t.Fatal("changed definition reused credential")
 	}
-	if e := s.saveToken(d.ID, "stale-login-token", []string{"endpoint-1"}, &old); e == nil {
+	if e := s.saveToken(old, "stale-login-token", []string{"endpoint-1"}); e == nil {
 		t.Fatal("old login token saved for changed definition")
 	}
 }

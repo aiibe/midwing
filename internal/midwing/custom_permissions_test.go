@@ -17,7 +17,7 @@ func TestPermissionDescriptionsPreserveConnection(t *testing.T) {
 	if err := s.CreateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := s.RegistrySnapshot()

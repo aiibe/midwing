@@ -30,7 +30,7 @@ func TestCredentialSuppressionInspectsAllJSONStrings(t *testing.T) {
 
 func TestDuplicateKeyCredentialNeverReachesOutput(t *testing.T) {
 	s := testStore(t)
-	if err := s.SaveService("sample-api", "private-token", []string{"profile"}); err != nil {
+	if err := saveTestService(s, "sample-api", "private-token", []string{"profile"}); err != nil {
 		t.Fatal(err)
 	}
 	client := Client{Store: s, HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {

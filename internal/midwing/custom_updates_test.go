@@ -33,7 +33,7 @@ func TestEndpointUpdatesRequireReconnect(t *testing.T) {
 			if err := s.CreateCustomService(d); err != nil {
 				t.Fatal(err)
 			}
-			if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+			if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 				t.Fatal(err)
 			}
 			before, err := s.read()
@@ -79,7 +79,7 @@ func TestEndpointUpdatesRequireReconnect(t *testing.T) {
 			if _, err := client.CallWithBody(context.Background(), d.ID, tc.method, tc.path, body); err == nil || !strings.Contains(err.Error(), "connect") || calls != 0 {
 				t.Fatalf("updated endpoint bypassed reconnection: %v (%d calls)", err, calls)
 			}
-			if err := reopened.SaveService(d.ID, "private-api-key", []string{permission}); err != nil {
+			if err := saveTestService(reopened, d.ID, "private-api-key", []string{permission}); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := client.CallWithBody(context.Background(), d.ID, tc.method, tc.path, body); err != nil || calls != 1 {
@@ -116,7 +116,7 @@ func TestServiceUpdateRejectsInvalidOrFixedFields(t *testing.T) {
 			if err := s.CreateCustomService(d); err != nil {
 				t.Fatal(err)
 			}
-			if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
+			if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1"}); err != nil {
 				t.Fatal(err)
 			}
 			before, err := s.read()
@@ -145,7 +145,7 @@ func TestEndpointUpdateRemovesOldAccess(t *testing.T) {
 	if err := s.UpdateCustomService(d); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveService(d.ID, "private-api-key", []string{"endpoint-1-post"}); err != nil {
+	if err := saveTestService(s, d.ID, "private-api-key", []string{"endpoint-1-post"}); err != nil {
 		t.Fatal(err)
 	}
 	client := Client{Store: s, HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {

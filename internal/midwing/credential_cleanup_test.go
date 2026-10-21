@@ -38,7 +38,7 @@ func TestConnectionRemovalCredentialErrors(t *testing.T) {
 					}
 					id, permission = d.ID, "endpoint-1"
 				}
-				if err := s.SaveService(id, "token", []string{permission}); err != nil {
+				if err := saveTestService(s, id, "token", []string{permission}); err != nil {
 					t.Fatal(err)
 				}
 				var err error
@@ -85,7 +85,7 @@ func TestReconnectCredentialCleanup(t *testing.T) {
 	for _, missing := range []bool{false, true} {
 		t.Run(map[bool]string{false: "failure", true: "missing"}[missing], func(t *testing.T) {
 			s := testStore(t)
-			if err := s.SaveService("sample-api", "old", []string{"profile"}); err != nil {
+			if err := saveTestService(s, "sample-api", "old", []string{"profile"}); err != nil {
 				t.Fatal(err)
 			}
 			old, err := s.List()
@@ -97,7 +97,7 @@ func TestReconnectCredentialCleanup(t *testing.T) {
 				cleanupErr = errCredentialNotFound
 			}
 			s.Vault = deletionVault{Vault: s.Vault, err: cleanupErr}
-			err = s.SaveService("sample-api", "new", []string{"items"})
+			err = saveTestService(s, "sample-api", "new", []string{"items"})
 			if missing && err != nil {
 				t.Fatal(err)
 			}
@@ -128,7 +128,7 @@ func TestRemovalWriteFailurePreservesCredentials(t *testing.T) {
 				}
 				id, permission = d.ID, "endpoint-1"
 			}
-			if err := s.SaveService(id, "private-token", []string{permission}); err != nil {
+			if err := saveTestService(s, id, "private-token", []string{permission}); err != nil {
 				t.Fatal(err)
 			}
 			path := filepath.Join(s.Dir, "settings.json")
@@ -168,7 +168,7 @@ func TestRemovalWriteFailurePreservesCredentials(t *testing.T) {
 
 func TestPendingCredentialCleanupRetriesAfterRestart(t *testing.T) {
 	s := testStore(t)
-	if err := s.SaveService("sample-api", "token", []string{"profile"}); err != nil {
+	if err := saveTestService(s, "sample-api", "token", []string{"profile"}); err != nil {
 		t.Fatal(err)
 	}
 	vault := s.Vault

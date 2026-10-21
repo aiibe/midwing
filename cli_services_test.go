@@ -146,7 +146,7 @@ func TestPostCLIUsesMethodSpecificGrant(t *testing.T) {
 	if err := store.CreateCustomService(definition); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveService("write-api", "private-token", []string{"endpoint-1"}); err != nil {
+	if err := saveTestService(store, "write-api", "private-token", []string{"endpoint-1"}); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer

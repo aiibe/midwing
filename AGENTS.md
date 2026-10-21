@@ -17,6 +17,12 @@
 - Prefer simple, maintainable designs; introduce abstractions when they reduce meaningful duplication or coupling.
 - Aim for source and test files under 300 lines; split longer files by responsibility.
 
+## Tool output
+
+- Review diffs first; read targeted code sections and avoid repeated dumps.
+- Summarize successful checks; keep full logs for failures.
+- Print concise batch results and limit output before it needs truncating.
+
 ## Releases
 
 - Version by scope: patch for fixes, minor for new capabilities (including `0.x`); assess compatibility before tagging.

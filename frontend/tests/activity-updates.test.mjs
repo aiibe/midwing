@@ -10,16 +10,35 @@ test('activity ignores older responses and older failures', async t => {
    h.app.Activity = () => new Promise((resolve, reject) => requests.push({resolve, reject}));
    d.querySelector('[data-tab="activity"]').click();
    d.querySelector('#refresh').click();
-   requests[1].resolve([{time: '2026-01-02T00:00:00Z', operation: 'latest', outcome: 'success'}]);
+   requests[1].resolve({entries:[{time: '2026-01-02T00:00:00Z', operation: 'latest', outcome: 'success'}]});
    await settle();
    if (rejectOld) requests[0].reject(Error('obsolete failure'));
-   else requests[0].resolve([{time: '2026-01-01T00:00:00Z', operation: 'obsolete', outcome: 'success'}]);
+   else requests[0].resolve({entries:[{time: '2026-01-01T00:00:00Z', operation: 'obsolete', outcome: 'success'}],warning:'obsolete warning'});
    await settle();
    assert.match(d.querySelector('#history').textContent, /latest/);
    assert.doesNotMatch(d.querySelector('#history').textContent, /obsolete/);
    assert.doesNotMatch(d.querySelector('#message').textContent, /obsolete failure/);
+   assert.equal(d.querySelector('#history-warning').hidden, true);
   });
  }
+});
+
+test('activity displays recovered entries with a warning and clears it after recovery', async t => {
+ const h = await setup(t); const d = h.window.document;
+ const entry = {time:'2026-01-02T00:00:00Z', operation:'recovered request', outcome:'success'};
+ h.app.Activity = async () => ({entries:[entry], warning:'some activity records were damaged and skipped'});
+ d.querySelector('[data-tab="activity"]').click(); await settle();
+ assert.match(d.querySelector('#history').textContent, /recovered request/);
+ assert.match(d.querySelector('#history-warning').textContent, /damaged and skipped/);
+ assert.equal(d.querySelector('#history-warning').hidden, false);
+ h.app.Activity = async () => ({entries:[entry]});
+ d.querySelector('#refresh').click(); await settle();
+ assert.equal(d.querySelector('#history-warning').hidden, true);
+ assert.equal(d.querySelector('#history-warning').textContent, '');
+ h.app.Activity = async () => ({entries:[], warning:'some activity records were damaged and skipped'});
+ d.querySelector('#refresh').click(); await settle();
+ assert.equal(d.querySelector('#history-warning').hidden, false);
+ assert.match(d.querySelector('#history').textContent, /No readable activity/);
 });
 
 test('update notice links to the release, preserves offline notices, and avoids overlapping checks', async t => {

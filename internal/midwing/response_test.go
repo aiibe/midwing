@@ -40,7 +40,7 @@ func TestRawResponses(t *testing.T) {
 				if err := store.CreateCustomService(d); err != nil {
 					t.Fatal(err)
 				}
-				if err := store.SaveService(d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
+				if err := saveTestService(store, d.ID, "secret-token", []string{"endpoint-1", "endpoint-1-post"}); err != nil {
 					t.Fatal(err)
 				}
 				client := Client{Store: store, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {
@@ -130,7 +130,7 @@ func TestRawResponseFailuresAndOptions(t *testing.T) {
 			if permissions == nil {
 				permissions = []string{"endpoint-1"}
 			}
-			if err := store.SaveService(d.ID, "secret-token", permissions); err != nil {
+			if err := saveTestService(store, d.ID, "secret-token", permissions); err != nil {
 				t.Fatal(err)
 			}
 			calls := 0
@@ -188,7 +188,7 @@ func TestResponseConsumerOutcome(t *testing.T) {
 	for _, outcome := range []string{"close failure", "canceled request", "canceled after write", "record failure"} {
 		t.Run(outcome, func(t *testing.T) {
 			store := testStore(t)
-			if err := store.SaveService("sample-api", "secret-token", []string{"profile"}); err != nil {
+			if err := saveTestService(store, "sample-api", "secret-token", []string{"profile"}); err != nil {
 				t.Fatal(err)
 			}
 			if outcome == "record failure" {
@@ -255,7 +255,7 @@ func TestJSONOutputFailures(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			store := testStore(t)
-			if err := store.SaveService("sample-api", "secret-token", []string{"profile"}); err != nil {
+			if err := saveTestService(store, "sample-api", "secret-token", []string{"profile"}); err != nil {
 				t.Fatal(err)
 			}
 			client := Client{Store: store, HTTP: &http.Client{Transport: transport(func(r *http.Request) (*http.Response, error) {

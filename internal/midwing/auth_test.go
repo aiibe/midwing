@@ -15,7 +15,7 @@ import (
 func TestPasswordLoginAndRefresh(t *testing.T) {
 	registerPasswordFixture(t)
 	s := testStore(t)
-	if e := s.SaveService("sample-api", "sample-api-secret", []string{"profile"}); e != nil {
+	if e := saveTestService(s, "sample-api", "sample-api-secret", []string{"profile"}); e != nil {
 		t.Fatal(e)
 	}
 	calls := 0
@@ -53,7 +53,7 @@ func TestPasswordLoginAndRefresh(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: ioBody(body)}, nil
 	})}}
-	if e := c.ConnectPassword(context.Background(), "sample-auth", "me@example.com", "private-password", []string{"sheets"}); e != nil {
+	if e := c.ConnectPassword(context.Background(), "sample-auth", reviewedRevision(t, c.Store, "sample-auth"), "me@example.com", "private-password", []string{"sheets"}); e != nil {
 		t.Fatal(e)
 	}
 	rows, e := s.List()
@@ -111,7 +111,7 @@ func TestDifferentJSONLoginProtocol(t *testing.T) {
 		}
 		return &http.Response{StatusCode: 200, Body: ioBody(body)}, nil
 	})}}
-	if e := c.ConnectPassword(context.Background(), "example", "me@example.com", "pass", []string{"read"}); e != nil {
+	if e := c.ConnectPassword(context.Background(), "example", reviewedRevision(t, c.Store, "example"), "me@example.com", "pass", []string{"read"}); e != nil {
 		t.Fatal(e)
 	}
 	if _, e := c.Call(context.Background(), "example", "GET", "/things"); e != nil {
@@ -132,7 +132,7 @@ func TestLoginFailuresKeepConnectionAndSuppressPayload(t *testing.T) {
 		c := Client{Store: s, HTTP: &http.Client{Transport: transport(func(*http.Request) (*http.Response, error) {
 			return &http.Response{StatusCode: tc.status, Header: http.Header{"Location": []string{"https://other.test"}}, Body: ioBody(tc.body)}, nil
 		})}}
-		e := c.ConnectPassword(context.Background(), "sample-auth", "me@example.com", "private-password", []string{"sheets"})
+		e := c.ConnectPassword(context.Background(), "sample-auth", reviewedRevision(t, c.Store, "sample-auth"), "me@example.com", "private-password", []string{"sheets"})
 		if e == nil || strings.Contains(e.Error(), "private-password") {
 			t.Fatalf("unsafe failure %v", e)
 		}
@@ -150,7 +150,7 @@ func TestPermissionValidationBeforeLogin(t *testing.T) {
 		return nil, nil
 	})}}
 	for _, permissions := range [][]string{nil, {"profile"}} {
-		if e := c.ConnectPassword(context.Background(), "sample-auth", "me@example.com", "pass", permissions); e == nil {
+		if e := c.ConnectPassword(context.Background(), "sample-auth", reviewedRevision(t, c.Store, "sample-auth"), "me@example.com", "pass", permissions); e == nil {
 			t.Fatal("accepted invalid permissions")
 		}
 	}
@@ -224,7 +224,7 @@ func seedPasswordConnection(t *testing.T, store *Store, id, token string, permis
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = store.saveToken(id, token, permissions, &service); err != nil {
+	if err = store.saveToken(service, token, permissions); err != nil {
 		t.Fatal(err)
 	}
 	return nil
