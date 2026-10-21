@@ -6,15 +6,13 @@
 
 Give your coding agent a little wingman. 🪽
 
-Midwing is a small desktop app and CLI for reading APIs through your connected accounts. Connect an account, pick the endpoints your agent can use, and let it get to work. Tokens stay tucked away in your OS keychain.
+Midwing is a desktop app and CLI for calling APIs through your connected accounts. Connect an account and choose which requests your agent can make. Tokens stay in your OS keychain.
 
 Bring your own APIs with token or email/password authentication. Manage connections in the app, then close it whenever you like—the CLI keeps working.
 
-Release builds check for newer published versions when the desktop app opens and at most once a day while it stays open. A notice links to the release download; install updates manually to preserve your connections. Checks send only a public release request to GitHub, without account credentials.
-
 ## Download and install on macOS
 
-Download the universal macOS ZIP from this repository's **Releases** page. It supports Apple Silicon and Intel Macs. Extract it, then run from the extracted directory:
+Download the universal macOS ZIP from [Releases](https://github.com/aiibe/midwing/releases) for Apple Silicon or Intel. See the [changelog](CHANGELOG.md) for changes. Extract the ZIP, then run:
 
 ```sh
 ./install.sh ./Midwing.app
@@ -23,7 +21,11 @@ open "$HOME/Applications/Midwing.app"
 
 These releases are ad hoc signed, without an Apple Developer ID or Apple notarization. If macOS blocks the app and you trust the download, attempt to open it, then use **System Settings → Privacy & Security → Open Anyway**. See [Apple's instructions](https://support.apple.com/102445). Open the desktop app before using the CLI.
 
-The installer also exposes `midwing` in `~/.local/bin`; add that directory to your PATH if needed. To verify the downloaded ZIP, run `shasum -a 256 -c midwing-v0.1.0-macos-universal.zip.sha256` with its matching checksum file in the same directory, substituting your release version.
+The installer puts the app in `~/Applications` and the CLI in `~/.local/bin`; add the latter to your PATH if needed. Close Midwing before updating; rerunning the installer preserves your connections. Override the locations with `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`.
+
+To verify the ZIP, run `shasum -a 256 -c midwing-v0.1.0-macos-universal.zip.sha256` alongside the matching checksum file, substituting your version.
+
+Release builds check GitHub for updates on launch and at most daily, without sending account credentials. Follow the update notice to download and install a newer version manually.
 
 ## Build and install from source
 
@@ -42,13 +44,11 @@ On macOS, install the app and CLI:
 midwing
 ```
 
-The installer uses `~/Applications/Midwing.app` and `~/.local/bin/midwing`. Add `~/.local/bin` to your PATH if needed. Close Midwing before updating; rerunning the installer preserves your connections. Custom locations use `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`.
-
 On Windows and Linux, put the executable from `build/bin` on PATH. Linux also needs an unlocked Secret Service keyring.
 
 ## Take it for a spin
 
-Run `midwing` to open the app. Add your API with **+ Add service**, enter its credentials, choose endpoint permissions, and save the connection. The examples below use a service named `my-service` with allowed `/items` and `/items/{id}` endpoints.
+Run `midwing` to open the app and [add your API](#bring-your-own-api). These examples use `my-service` with GET and POST allowed on `/items`, and GET on `/items/{id}`:
 
 ```sh
 midwing services
@@ -62,9 +62,7 @@ The CLI returns JSON, one page per call. Errors go to stderr with a nonzero exit
 
 ### Introduce your agent
 
-Open **Agent setup → Copy prompt** and paste it into your coding agent. The prompt walks your agent through installing a reusable skill and checking the CLI. If it does not support persistent skills, it can follow the guidance in the conversation.
-
-The prompt contains no credentials. To refresh an installed skill after an update, copy the prompt again.
+Open **Agent setup → Copy prompt** and paste it into your coding agent. It guides the agent through installing a skill and checking the CLI, or following the instructions in conversation if skills are unsupported. The prompt contains no credentials. Copy it again to refresh an installed skill after an update.
 
 ## Bring your own API
 
@@ -74,18 +72,15 @@ For bearer tokens, use header `Authorization` and prefix `Bearer` in the form. F
 
 Email/password services need a JSON login endpoint and a token response field. Only the returned token is stored. An optional refresh endpoint renews it before each API request.
 
-More at home in a terminal? Create definitions through the CLI:
+To create a service through the CLI:
 
 ```sh
 midwing services schema               # Fields, defaults, and examples
 midwing services validate service.json
 midwing services create service.json
-midwing services my-service
-midwing get my-service /items
-midwing post my-service /items '{"name":"Example"}'
 ```
 
-In a CLI definition, omitting `methods` means `GET` only. Add `"methods":["GET","POST"]` to an endpoint to enable those requests; each method gets its own permission in the desktop app. `midwing post SERVICE PATH JSON` sends one JSON body (up to 1 MiB). For example:
+Omitting `methods` means GET only. This definition enables GET and POST; POST accepts a JSON body up to 1 MiB:
 
 ```json
 {"id":"my-service","name":"My service","baseUrl":"https://api.example.com/v1","authKind":"token","header":"Authorization","prefix":"Bearer ","endpoints":[{"path":"/items","methods":["GET","POST"],"queryParameters":["limit"]}]}
@@ -107,7 +102,7 @@ Requests use fixed HTTPS destinations, disable redirects, and time out after 30 
 go run github.com/wailsapp/wails/v2/cmd/wails@v2.12.0 dev
 ```
 
-Give your changes a check before takeoff:
+Run checks:
 
 ```sh
 npm --prefix frontend run build
@@ -117,3 +112,25 @@ go vet ./...
 ```
 
 Tests use an in-memory credential vault and HTTP transport; no live credentials are needed. Service validation lives in [internal/midwing/services.go](internal/midwing/services.go), and the bundled agent skill lives in [internal/midwing/skill/SKILL.md](internal/midwing/skill/SKILL.md).
+
+## Release a version
+
+Add notable changes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md). Choose a patch for fixes or a minor for new capabilities, including during `0.x`.
+
+Commit all changes. From a clean, up-to-date release branch, run (requires Python 3):
+
+```sh
+git fetch origin --tags
+./scripts/release.sh 0.2.0
+```
+
+The script versions the pending changelog entries, updates `wails.json`, and creates a commit and annotated tag. Notes must be nonempty and the version newer than existing releases.
+
+Review the commit and tag, then run the printed atomic push command. CI builds and checks the app, then creates a **draft** GitHub release using the changelog section and installation instructions. Review and publish the draft on GitHub.
+
+Preview notes and test release tooling:
+
+```sh
+python3 scripts/release.py notes v0.1.2
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```

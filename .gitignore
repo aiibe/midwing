@@ -8,3 +8,4 @@ v0.md
 /draft
 /build/release/
 /output/
+__pycache__/
