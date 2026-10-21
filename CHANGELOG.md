@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fix macOS release signing failing with “Unknown format in import” when loading PKCS#12 certificates into the CI keychain.
 - Correct release command examples, document update-check retries, and enable update notifications in the local release build instructions.
 
 ## [0.5.0](https://github.com/aiibe/midwing/releases/tag/v0.5.0) — 2026-10-22

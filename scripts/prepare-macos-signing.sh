@@ -23,15 +23,15 @@ from pathlib import Path
 import sys
 
 for name in ['MACOS_CERTIFICATE_P12', 'MACOS_INSTALLER_CERTIFICATE_P12']:
-    (Path(sys.argv[1]) / name).write_bytes(base64.b64decode(os.environ[name], validate=True))
+    (Path(sys.argv[1]) / f'{name}.p12').write_bytes(base64.b64decode(os.environ[name], validate=True))
 PY
 keychain_password=$(openssl rand -hex 32)
 security create-keychain -p "$keychain_password" "$keychain"
 security set-keychain-settings -lut 21600 "$keychain"
 security unlock-keychain -p "$keychain_password" "$keychain"
-security import "$certificates/MACOS_CERTIFICATE_P12" -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" \
+security import "$certificates/MACOS_CERTIFICATE_P12.p12" -f pkcs12 -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" \
   -T /usr/bin/codesign > /dev/null
-security import "$certificates/MACOS_INSTALLER_CERTIFICATE_P12" -k "$keychain" -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD" \
+security import "$certificates/MACOS_INSTALLER_CERTIFICATE_P12.p12" -f pkcs12 -k "$keychain" -P "$MACOS_INSTALLER_CERTIFICATE_PASSWORD" \
   -T /usr/bin/productbuild > /dev/null
 security set-key-partition-list -S apple-tool:,apple:,codesign: \
   -s -k "$keychain_password" "$keychain" > /dev/null
