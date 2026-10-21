@@ -80,17 +80,17 @@ func (a *App) DeleteCustomService(id string) (midwing.ChangeResult, error) {
 func (a *App) UpdatePermissionDescriptions(id string, descriptions map[string]string) (midwing.ChangeResult, error) {
 	return changeResult(a.store.UpdatePermissionDescriptions(id, descriptions))
 }
-func (a *App) SaveConnection(service, token string, permissions []string) (midwing.ChangeResult, error) {
-	return changeResult(a.store.SaveService(service, token, permissions))
+func (a *App) SaveConnection(service, revision, token string, permissions []string) (midwing.ChangeResult, error) {
+	return changeResult(a.store.SaveServiceRevision(service, revision, token, permissions))
 }
-func (a *App) ConnectPassword(service, email, password string, permissions []string) (midwing.ChangeResult, error) {
+func (a *App) ConnectPassword(service, revision, email, password string, permissions []string) (midwing.ChangeResult, error) {
 	if a.ctx == nil {
 		return midwing.ChangeResult{}, fmt.Errorf("desktop app is not ready")
 	}
 	if err := a.ctx.Err(); err != nil {
 		return midwing.ChangeResult{}, err
 	}
-	return changeResult((&midwing.Client{Store: a.store}).ConnectPassword(a.ctx, service, email, password, permissions))
+	return changeResult((&midwing.Client{Store: a.store}).ConnectPasswordRevision(a.ctx, service, revision, email, password, permissions))
 }
 func (a *App) RemoveConnection(service string) (midwing.ChangeResult, error) {
 	return changeResult(a.store.RemoveService(service))

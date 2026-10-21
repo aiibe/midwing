@@ -118,6 +118,17 @@ func (c *Client) ConnectPassword(ctx context.Context, service, email, password s
 	}
 	return c.connectPassword(ctx, s, email, password, permissions)
 }
+
+// ConnectPasswordRevision checks the reviewed definition before sending credentials.
+// saveToken checks it again under the settings lock after login completes.
+func (c *Client) ConnectPasswordRevision(ctx context.Context, service, revision, email, password string, permissions []string) error {
+	s, err := c.Store.serviceAtRevision(service, revision)
+	if err != nil {
+		return err
+	}
+	return c.connectPassword(ctx, s, email, password, permissions)
+}
+
 func (c *Client) connectPassword(ctx context.Context, s Service, email, password string, permissions []string) error {
 	if s.Password == nil {
 		return errors.New("service does not support email/password authentication")

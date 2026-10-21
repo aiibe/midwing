@@ -204,8 +204,8 @@ document.querySelector('#form')!.addEventListener('submit', async e => {
     const permissions = [...document.querySelectorAll<HTMLInputElement>('[name="permission"]:checked')].map(el => el.value);
     await mutateConnection(
         () => service.authKind === 'password'
-            ? app.ConnectPassword(service.id, email, password, permissions)
-            : app.SaveConnection(service.id, token, permissions),
+            ? app.ConnectPassword(service.id, service.revision, email, password, permissions)
+            : app.SaveConnection(service.id, service.revision, token, permissions),
         `${service.name} connected. Your tools can now call its API.`,
         service.authKind === 'password' ? 'Signing in…' : 'Saving connection…',
     );

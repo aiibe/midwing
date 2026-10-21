@@ -71,6 +71,29 @@ func (s *Store) SaveService(service, token string, permissions []string) error {
 	return s.saveToken(service, token, permissions, nil)
 }
 
+// SaveServiceRevision saves token approvals for the definition reviewed by the user.
+func (s *Store) SaveServiceRevision(service, revision, token string, permissions []string) error {
+	definition, err := s.serviceAtRevision(service, revision)
+	if err != nil {
+		return err
+	}
+	if definition.AuthKind != "token" {
+		return errors.New("service requires email/password login")
+	}
+	return s.saveToken(service, token, permissions, &definition)
+}
+
+func (s *Store) serviceAtRevision(service, revision string) (Service, error) {
+	definition, err := s.Service(service)
+	if err != nil {
+		return Service{}, err
+	}
+	if revision != definition.DefinitionHash {
+		return Service{}, errors.New("service changed; reload and review permissions before reconnecting")
+	}
+	return definition, nil
+}
+
 func (s *Store) saveToken(service, token string, permissions []string, expected *Service) error {
 	if strings.TrimSpace(token) == "" || strings.ContainsAny(token, "\r\n") {
 		return errors.New("invalid credential")
@@ -88,7 +111,7 @@ func (s *Store) saveToken(service, token string, permissions []string, expected 
 			return errors.New("service requires email/password login")
 		}
 		if expected != nil && (definition.DefinitionHash != expected.DefinitionHash || definition.Origin != expected.Origin) {
-			return errors.New("service changed during login; reconnect")
+			return errors.New("service changed; reload and review permissions before reconnecting")
 		}
 		if e = validatePermissions(definition, permissions); e != nil {
 			return e
