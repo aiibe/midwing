@@ -18,26 +18,30 @@
 <main>
 <section id="cli-setup" hidden>
 <h1>CLI setup</h1>
-<p id="cli-status" role="status" aria-live="polite">Open the desktop app to set up the CLI.</p>
-<p id="cli-warning" class="error" hidden></p>
-<div id="cli-details" hidden>
-<p>The CLI uses this app's executable and works after the app closes.</p>
-<p>Destination: <code id="cli-destination"></code><br>App executable: <code id="cli-target"></code></p>
-<p id="cli-existing-row" hidden>Current user link: <code id="cli-existing"></code></p>
-<p id="cli-change-explanation" hidden>Repair replaces only a verified Midwing user link at the destination above. Remove CLI removes that link and keeps the app and connections.</p>
-<div class="cli-actions">
-<button type="button" class="primary" data-cli-action="install" hidden>Install CLI</button>
-<button type="button" class="primary" data-cli-action="repair" hidden>Repair CLI link</button>
-<button type="button" data-cli-action="remove" class="secondary" hidden>Remove CLI</button>
-</div>
-<h2>Verify in a fresh terminal</h2>
-<p>Run <code>type -a midwing</code> and <code>midwing --help</code>. Check that the command uses this app. An older installation may appear first.</p>
-<p>If the command is missing, copy this line into your shell configuration (<code>~/.zprofile</code> for the default login zsh) to add its directory to PATH, then open a new terminal:</p>
+<div class="panel">
+<h2 id="cli-status" role="status" aria-live="polite">Checking CLI setup…</h2>
+<p id="cli-message">Open the desktop app to set up the CLI.</p>
+<button type="button" class="primary" id="cli-retry" hidden>Retry setup</button>
+<div id="cli-controls" hidden>
+<label class="check"><input id="cli-enabled" type="checkbox" aria-labelledby="cli-enabled-label" aria-describedby="cli-enabled-help" disabled><span><span id="cli-enabled-label">Enable CLI</span><small id="cli-enabled-help">Set up the command automatically when Midwing launches. Turning this off removes Midwing's CLI link and keeps your app and connections.</small></span></label>
+<div class="cli-location"><code id="cli-destination"></code><button type="button" class="secondary" data-cli-copy="cli-destination">Copy path</button></div>
+<details class="cli-help">
+<summary>Make the command available in your terminal</summary>
+<p>In a fresh terminal, run <code>type -a midwing</code> and <code>midwing --help</code>. The app can install the CLI link, but cannot check your terminal's PATH.</p>
+<p>If the command is missing, add this line to your shell configuration (<code>~/.zprofile</code> for the default login zsh), then open a new terminal:</p>
 <pre><code id="cli-path"></code></pre>
-<p>For fish, add the command's directory with <code>fish_add_path</code>. Restart coding agents and their host apps after changing PATH; some agents need an explicit executable path.</p>
+<button type="button" class="secondary" data-cli-copy="cli-path">Copy PATH command</button>
+<p>For fish, run <code>fish_add_path ~/.local/bin</code>. Restart coding agents and their host apps after changing PATH. You can also give an agent the command's full path. The CLI works after Midwing closes.</p>
+</details>
 </div>
-<button type="button" class="secondary" id="cli-refresh">Refresh CLI status</button>
+<details class="cli-help">
+<summary>Details</summary>
+<p>App executable: <code id="cli-target"></code></p>
+<p id="cli-existing-row" hidden>Current link: <code id="cli-existing"></code></p>
 <p id="cli-error" class="error" role="alert"></p>
+</details>
+<small id="cli-copy-status" role="status" aria-live="polite"></small>
+</div>
 </section>
 
 <section id="connections">

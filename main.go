@@ -39,6 +39,7 @@ func newUpdateChecker() *midwing.UpdateChecker {
 }
 
 type App struct {
+	cliSetup     cliSetupState
 	store        *midwing.Store
 	ctx          context.Context
 	stopWatching func()
@@ -47,6 +48,9 @@ type App struct {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if err := a.ensureCLI(); err != nil {
+		runtime.LogWarning(ctx, "Automatic CLI setup failed; retry from CLI setup: "+err.Error())
+	}
 	stop, err := a.store.WatchSettings(ctx, func() { runtime.EventsEmit(ctx, "settings-changed") })
 	if err != nil {
 		runtime.LogWarning(ctx, "Settings watcher unavailable; refresh on focus remains enabled.")
@@ -130,18 +134,24 @@ func runCLIWithInput(args []string, store *midwing.Store, in io.Reader, out io.W
 	return fmt.Errorf("unknown command; run midwing --help")
 }
 
-func main() {
-	store, e := midwing.NewStore()
-	if e == nil {
-		if len(os.Args) > 1 {
-			e = runCLI(os.Args[1:], store, os.Stdout)
-		} else {
-			app := &App{store: store, updates: newUpdateChecker()}
-			e = wails.Run(&options.App{OnStartup: app.startup, OnShutdown: app.shutdown, Title: "Midwing", Width: 1080, Height: 760, MinWidth: 780, MinHeight: 600, BackgroundColour: &options.RGBA{R: 14, G: 17, B: 23, A: 255}, AssetServer: &assetserver.Options{Assets: assets}, Bind: []interface{}{app}})
-		}
+func run(args []string) error {
+	if len(args) == 1 && args[0] == "--setup-cli" {
+		return setupCLICommand(os.Stdout)
 	}
-	if e != nil {
-		fmt.Fprintln(os.Stderr, "midwing:", e)
+	store, err := midwing.NewStore()
+	if err != nil {
+		return err
+	}
+	if len(args) > 0 {
+		return runCLI(args, store, os.Stdout)
+	}
+	app := &App{store: store, updates: newUpdateChecker()}
+	return wails.Run(&options.App{OnStartup: app.startup, OnShutdown: app.shutdown, Title: "Midwing", Width: 1080, Height: 760, MinWidth: 780, MinHeight: 600, BackgroundColour: &options.RGBA{R: 14, G: 17, B: 23, A: 255}, AssetServer: &assetserver.Options{Assets: assets}, Bind: []interface{}{app}})
+}
+
+func main() {
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, "midwing:", err)
 		os.Exit(1)
 	}
 }

@@ -18,7 +18,7 @@ func Current() (Manager, error) {
 	if err != nil {
 		return Manager{}, err
 	}
-	return Manager{Home: home, Executable: executable, SystemLink: "/usr/local/bin/midwing",
+	return Manager{Home: home, Executable: executable,
 		Roots: []string{"/Applications", filepath.Join(home, "Applications")},
 		VerifyBundle: func(bundle string) bool {
 			id, err := exec.Command("/usr/libexec/PlistBuddy", "-c", "Print :CFBundleIdentifier", filepath.Join(bundle, "Contents", "Info.plist")).Output()

@@ -252,6 +252,7 @@ function showTab(tab: string, refresh = true) {
     message('');
     if (tab === 'connections' && refresh) refreshSettings();
     if (tab === 'activity') void history();
+    if (tab === 'cli-setup') void refreshCLI();
 }
 const openCustomForm = setupCustomServiceForm({
     isBusy: () => busy,
@@ -268,4 +269,4 @@ void load().catch(e => message(String(e), true));
 
 
 setupUpdates();
-setupCLI();
+const refreshCLI = setupCLI();

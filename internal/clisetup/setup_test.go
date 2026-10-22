@@ -24,7 +24,6 @@ func fixture(t *testing.T) Manager {
 		t.Fatal(err)
 	}
 	return Manager{Home: home, Executable: binary, Roots: []string{root},
-		SystemLink: filepath.Join(home, "usr", "local", "bin", "midwing"),
 		VerifyBundle: func(bundle string) bool {
 			_, err := os.Stat(filepath.Join(bundle, "Contents", "MacOS", "midwing"))
 			return err == nil
@@ -42,30 +41,6 @@ func symlink(t *testing.T, path, target string) {
 	}
 }
 
-func TestInstallIdempotenceAndRemoval(t *testing.T) {
-	m := fixture(t)
-	s, err := m.Status()
-	if err != nil || !s.CanInstall || s.Installed {
-		t.Fatalf("fresh: %+v %v", s, err)
-	}
-	for range 2 {
-		s, err = m.Change("install")
-		if err != nil || !s.Installed || !s.CanRemove {
-			t.Fatalf("install: %+v %v", s, err)
-		}
-	}
-	if linkTarget(m.destination()) != m.Executable {
-		t.Fatal("incorrect target")
-	}
-	s, err = m.Change("remove")
-	if err != nil || s.Installed || !s.CanInstall {
-		t.Fatalf("remove: %+v %v", s, err)
-	}
-	if _, err := os.Stat(m.Executable); err != nil {
-		t.Fatal("app removed", err)
-	}
-}
-
 func TestSetupPreservesExistingSettingsAndActivity(t *testing.T) {
 	m := fixture(t)
 	directory := filepath.Dir(m.record())
@@ -77,7 +52,7 @@ func TestSetupPreservesExistingSettingsAndActivity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, action := range []string{"install", "remove"} {
+	for _, action := range []string{"ensure", "disable", "enable"} {
 		if _, err := m.Change(action); err != nil {
 			t.Fatal(err)
 		}
@@ -87,34 +62,6 @@ func TestSetupPreservesExistingSettingsAndActivity(t *testing.T) {
 		if err != nil || string(data) != "existing data" {
 			t.Fatalf("%s changed: %v", name, err)
 		}
-	}
-}
-
-func TestLegacySystemLinkNeedsNoDuplicate(t *testing.T) {
-	m := fixture(t)
-	symlink(t, m.SystemLink, m.Executable)
-	s, err := m.Change("install")
-	if err != nil || !s.Installed || s.CanRemove || s.CanInstall {
-		t.Fatalf("legacy: %+v %v", s, err)
-	}
-	if s.PathCommand != `export PATH="/usr/local/bin:$PATH"` {
-		t.Fatalf("legacy PATH guidance: %q", s.PathCommand)
-	}
-	if _, err := os.Lstat(m.destination()); !os.IsNotExist(err) {
-		t.Fatal("created duplicate")
-	}
-	if _, err := m.Change("remove"); err == nil {
-		t.Fatal("offered to remove system link")
-	}
-}
-
-func TestUserConflictWarnsWhenLegacyLinkWorks(t *testing.T) {
-	m := fixture(t)
-	symlink(t, m.SystemLink, m.Executable)
-	symlink(t, m.destination(), "/unrelated-command")
-	s, err := m.Status()
-	if err != nil || !s.Installed || s.Warning == "" || s.CanInstall || s.CanRemove {
-		t.Fatalf("shadowed legacy link: %+v %v", s, err)
 	}
 }
 
@@ -128,10 +75,17 @@ func TestUnrelatedCommandsArePreserved(t *testing.T) {
 			} else {
 				symlink(t, m.destination(), target)
 			}
-			for _, action := range []string{"install", "repair", "remove"} {
-				if _, err := m.Change(action); err == nil {
-					t.Fatalf("allowed %s", action)
+			for _, action := range []string{"ensure", "enable"} {
+				if _, err := m.Change(action); err == nil || !strings.Contains(err.Error(), "Another command") {
+					t.Fatalf("conflict missing for %s: %v", action, err)
 				}
+			}
+			// Opting out must preserve a command that Midwing does not own.
+			if s, err := m.Change("disable"); err != nil || !s.AutoSetupDisabled {
+				t.Fatalf("disable: %+v %v", s, err)
+			}
+			if _, err := m.Change("ensure"); err != nil {
+				t.Fatal(err)
 			}
 			if target == "file" {
 				data, _ := os.ReadFile(m.destination())
@@ -142,52 +96,6 @@ func TestUnrelatedCommandsArePreserved(t *testing.T) {
 				t.Fatal("link changed")
 			}
 		})
-	}
-}
-
-func TestMovedAppRepairsRecordedDanglingLink(t *testing.T) {
-	m := fixture(t)
-	if _, err := m.Change("install"); err != nil {
-		t.Fatal(err)
-	}
-	oldBundle := filepath.Dir(filepath.Dir(filepath.Dir(m.Executable)))
-	newBundle := filepath.Join(filepath.Dir(oldBundle), "Midwing Renamed.app")
-	if err := os.Rename(oldBundle, newBundle); err != nil {
-		t.Fatal(err)
-	}
-	m.Executable = filepath.Join(newBundle, "Contents", "MacOS", "midwing")
-	s, err := m.Status()
-	if err != nil || !s.CanRepair || s.Installed {
-		t.Fatalf("moved: %+v %v", s, err)
-	}
-	if _, err := m.Change("install"); err == nil {
-		t.Fatal("repair must be explicit")
-	}
-	s, err = m.Change("repair")
-	if err != nil || !s.Installed || s.CanRepair {
-		t.Fatalf("repair: %+v %v", s, err)
-	}
-}
-
-func TestOldSourceLinkAndSystemAmbiguity(t *testing.T) {
-	m := fixture(t)
-	old := m.Executable
-	renamed := filepath.Join(m.Roots[0], "Current.app")
-	os.MkdirAll(filepath.Join(renamed, "Contents", "MacOS"), 0755)
-	m.Executable = filepath.Join(renamed, "Contents", "MacOS", "midwing")
-	os.WriteFile(m.Executable, []byte("current"), 0755)
-	symlink(t, m.destination(), old)
-	symlink(t, m.SystemLink, old)
-	s, err := m.Status()
-	if err != nil || !s.CanRepair || s.Warning == "" {
-		t.Fatalf("source migration: %+v %v", s, err)
-	}
-	s, err = m.Change("repair")
-	if err != nil || !s.Installed || s.Warning == "" {
-		t.Fatalf("repair: %+v %v", s, err)
-	}
-	if linkTarget(m.SystemLink) != old {
-		t.Fatal("system command changed")
 	}
 }
 
@@ -204,26 +112,52 @@ func TestTransientAndDevelopmentLocations(t *testing.T) {
 			if err != nil || s.Available || !strings.Contains(s.Message, "installed copy") {
 				t.Fatalf("transient: %+v %v", s, err)
 			}
-			if _, err := m.Change("install"); err == nil {
+			if _, err := m.Change("ensure"); err == nil {
 				t.Fatal("installed transient link")
 			}
 		})
 	}
 }
 
-func TestConcurrentInstallAndChangedDestination(t *testing.T) {
+func TestUnrecordedAppLinksAndCommandChainsArePreserved(t *testing.T) {
+	for _, name := range []string{"other app", "command chain"} {
+		t.Run(name, func(t *testing.T) {
+			m := fixture(t)
+			target := filepath.Join(m.Roots[0], "Other.app", "Contents", "MacOS", "midwing")
+			if name == "command chain" {
+				target = filepath.Join(m.Home, "another-command")
+				symlink(t, target, m.Executable)
+			} else {
+				os.MkdirAll(filepath.Dir(target), 0755)
+				os.WriteFile(target, []byte("other app"), 0755)
+			}
+			symlink(t, m.destination(), target)
+			if _, err := m.Change("ensure"); err == nil {
+				t.Fatal("adopted an unrecorded command")
+			}
+			if s, err := m.Change("disable"); err != nil || s.Installed {
+				t.Fatalf("unrecorded command treated as owned: %+v %v", s, err)
+			}
+			if linkTarget(m.destination()) != target {
+				t.Fatal("unrecorded command changed")
+			}
+		})
+	}
+}
+
+func TestConcurrentEnableAndChangedDestination(t *testing.T) {
 	m := fixture(t)
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {
-			if _, err := m.Change("install"); err != nil {
+			if _, err := m.Change("enable"); err != nil {
 				t.Error(err)
 			}
 		})
 	}
 	wg.Wait()
 	if linkTarget(m.destination()) != m.Executable {
-		t.Fatal("concurrent install failed")
+		t.Fatal("concurrent setup failed")
 	}
 	os.Remove(m.destination())
 	symlink(t, m.destination(), "/other-command")
@@ -240,7 +174,7 @@ func TestPermissionsAndInvalidBundle(t *testing.T) {
 	os.MkdirAll(filepath.Dir(m.destination()), 0755)
 	os.Chmod(filepath.Dir(m.destination()), 0500)
 	t.Cleanup(func() { os.Chmod(filepath.Dir(m.destination()), 0755) })
-	if _, err := m.Change("install"); err == nil {
+	if _, err := m.Change("ensure"); err == nil {
 		t.Fatal("ignored permissions")
 	}
 	m.VerifyBundle = func(string) bool { return false }

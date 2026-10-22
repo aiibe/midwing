@@ -10,11 +10,13 @@ Connect your APIs, choose which requests your coding agent can make, and keep to
 
 ## Download and install on macOS
 
-Requires macOS 13 or newer. Starting with v0.6.0, download the universal macOS **DMG** from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), drag Midwing to Applications, eject the image, and launch the installed app.
+Requires macOS 13 or newer. Download the universal macOS **DMG** from [Releases](https://github.com/aiibe/midwing/releases) (Apple Silicon and Intel), drag Midwing to Applications, eject the image, and launch the installed app.
 
-The app and image are signed and notarized. Open **CLI setup → Install CLI** to create `~/.local/bin/midwing`, then verify `type -a midwing` and `midwing --help` in a fresh terminal. Add `~/.local/bin` to your shell PATH if needed and restart coding agents. A working CLI link from a PKG install is recognized without a duplicate.
+The app and image are signed and notarized. On launch, Midwing creates `~/.local/bin/midwing`, pointing to the installed app's executable, and updates its link if you move the app. Unrelated commands are preserved. **CLI setup** shows the link status, offers retry and copy actions, and lets you disable the CLI.
 
-To update, quit Midwing and replace the installed app; connections are preserved. Copying into `/Applications` can require administrator approval, especially when replacing a PKG install. See the [installation guide](docs/INSTALL-macos.md) for PATH, migration, checksums, and removal. Historical v0.5.x releases use PKG installers.
+Verify `type -a midwing` and `midwing --help` in a fresh terminal. Add `~/.local/bin` to your shell PATH if needed and restart coding agents. The app cannot check your terminal's PATH.
+
+To update, quit Midwing, replace the installed app, and relaunch it. Copying into `/Applications` can require administrator approval. See the [installation guide](docs/INSTALL-macos.md) for PATH, checksums, updates, and removal.
 
 Release builds check GitHub for updates on launch, then daily while running, without sending credentials. Failed checks retry after an hour. Updates are installed manually. See the [changelog](CHANGELOG.md) for changes.
 
@@ -35,7 +37,7 @@ go run github.com/wailsapp/wails/v2/cmd/wails@v2.17.0 build
 midwing
 ```
 
-The macOS source installer uses `~/Applications` and `~/.local/bin`; add the latter to PATH. Override them with `MIDWING_APP_DIR` and `MIDWING_BIN_DIR`.
+The macOS source installer copies the app to `~/Applications` and runs the same CLI setup as the desktop app, respecting the saved Enable CLI preference. The command lives at `~/.local/bin/midwing`; add `~/.local/bin` to PATH if needed. If CLI setup fails, the app stays installed; launch it and choose **CLI setup → Retry setup**.
 
 On Windows and Linux, put the executable from `build/bin` on PATH. Linux also needs an unlocked Secret Service keyring.
 

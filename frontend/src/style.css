@@ -283,7 +283,11 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); f
 
 #cli-setup { max-width: 780px; }
 #cli-setup p { margin-bottom: 14px; }
-#cli-setup h2 { margin-top: 24px; }
 #cli-setup code { overflow-wrap: anywhere; user-select: text; }
 #cli-setup pre { white-space: pre-wrap; user-select: text; }
-.cli-actions { display: flex; gap: 10px; margin: 20px 0; }
+.cli-location { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.cli-help { margin-top: 18px; }
+.cli-help summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 8px 0; }
+.cli-help summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#cli-retry { margin-top: 12px; }
+#cli-copy-status { margin-top: 12px; }

@@ -19,7 +19,7 @@ const script = output.output.find(chunk => chunk.type === 'chunk' && chunk.isEnt
 const sampleApi = {id:'sample-api',name:'Sample API',description:'Repositories',origin:'https://api.example.test',authKind:'token',revision:'',custom:false,examples:['/user'],permissions:[{id:'profile',label:'Profile',description:'Read profile'},{id:'repos',label:'Repositories',description:'Read repositories'}]};
 const custom = {...sampleApi,id:'new-service',revision:'custom-v1',name:'New Service',custom:true,origin:'https://example.com'};
 const settle = () => new Promise(resolve => setTimeout(resolve, 20));
-async function setup(t) {
+async function setup(t, appOverrides = {}) {
  const dom = new JSDOM('<div id="app"></div>', {runScripts:'outside-only',pretendToBeVisual:true});
  t.after(() => dom.window.close());
  const {window} = dom;
@@ -35,7 +35,10 @@ async function setup(t) {
  const app = {async Version() { return '0.1.0'; }, async State() {
   calls++; active++; maxActive = Math.max(maxActive, active);
   try { await settle(); if(fail) throw Error('bad settings'); return structuredClone(state); } finally { active--; }
- }};
+ }, async CLISetupStatus() {
+  return {available:false, installed:false, autoSetupDisabled:false, setupError:'',
+   destination:'', target:'', existingTarget:'', pathCommand:'', message:'Launch the installed app.'};
+ }, ...appOverrides};
  window.go = {main:{App:app}};
  window.runtime = {};
  window.runtime.EventsOnMultiple = (name, callback) => { assert.equal(name,'settings-changed'); listener = callback; return () => {listener = undefined;}; };

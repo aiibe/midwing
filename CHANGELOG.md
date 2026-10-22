@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+
+- Automatically create or update `~/.local/bin/midwing` when the installed macOS app launches. Preserve unrelated commands and respect the saved CLI opt-out, including when setup needs a retry.
+- Simplify CLI setup to a link status, Enable CLI preference, and one retry action. Keep terminal PATH help and copy buttons available, with technical errors under Details and sidebar notices only when setup needs attention.
+- Use the same CLI setup for source installations in `~/Applications`. Custom installation directories and legacy PKG CLI links are no longer supported; this installation model replaces earlier release behavior without migration support.
+
+### Fixed
+
+- Wait for active CLI setup operations when retrying manually or installing from source; keep app startup nonblocking.
+- Keep the CLI opt-out and setup controls available when inspecting or removing the link fails. Keep a successfully installed app available for retry if source CLI setup fails.
+
 ## [0.6.0](https://github.com/aiibe/midwing/releases/tag/v0.6.0) — 2026-10-22
 
 ### Added

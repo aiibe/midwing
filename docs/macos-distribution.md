@@ -9,11 +9,8 @@ verified before the DMG and SHA-256 checksum are published.
 The two notarization passes retain the existing app verification flow. They are
 not a requirement for every DMG workflow. The bundle ID remains
 `com.wails.midwing`, with macOS 13 as the minimum. The DMG uses
-`com.wails.midwing.dmg`. CLI setup is an explicit per-user step in the app; see
-[installation and migration](INSTALL-macos.md).
-
-Historical assets stay available: ZIPs through v0.4.0, then PKGs before v0.6.0.
-Release notes preserve the instructions appropriate to each version.
+`com.wails.midwing.dmg`. The installed app automatically sets up a per-user CLI
+link, respecting the Enable CLI preference; see [installation](INSTALL-macos.md).
 
 See [Apple's distribution guidance](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
 and [notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
@@ -22,8 +19,7 @@ and [notarization workflow](https://developer.apple.com/documentation/security/c
 
 Install your **Developer ID Application** certificate and private key. Check with
 `security find-identity -v -p basic`. Packaging selects it when exactly one is
-available; otherwise set `SIGNING_IDENTITY` to its full name. An Installer
-certificate is no longer needed.
+available; otherwise set `SIGNING_IDENTITY` to its full name.
 
 Create the default Keychain profile once. The command prompts for your Apple ID
 and an [app-specific password](https://account.apple.com/):
@@ -52,8 +48,8 @@ If Apple rejects a submission, inspect it with
 For a release smoke test, mount the DMG read-only, copy the app out with Finder
 or `ditto`, verify the copied app with `codesign`, `xcrun stapler validate`, and
 `spctl --assess --type execute`, then always detach the image. Verify fresh-user
-CLI setup in a terminal and an upgrade from the last PKG. Inspecting universal
-architectures does not establish execution coverage on both CPU types.
+CLI discovery in a terminal, retry after a conflict, and the Enable CLI preference.
+Inspecting universal architectures does not establish execution coverage on both CPU types.
 
 ## GitHub Actions credentials
 
@@ -80,7 +76,5 @@ base64 < /path/to/developer-id.p12 | tr -d '\n' | gh secret set MACOS_CERTIFICAT
 Use `gh secret set NAME` for the remaining secrets; it prompts for each value.
 CI imports PKCS#12 explicitly into a temporary keychain, preserves the keychain
 search list, restricts signing access, and removes the keychain even on failure.
-Installer secrets and certificates are unused; migrating the code does not
-remove repository secrets or revoke certificates.
 
 Follow the [release process](../README.md#release-a-version) to publish.

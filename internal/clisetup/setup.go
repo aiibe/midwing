@@ -1,8 +1,7 @@
-// Package clisetup manages an explicitly requested, per-user CLI link.
+// Package clisetup manages the per-user CLI link for the installed app.
 package clisetup
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,23 +12,20 @@ import (
 )
 
 type Status struct {
-	Available      bool   `json:"available"`
-	Installed      bool   `json:"installed"`
-	CanInstall     bool   `json:"canInstall"`
-	CanRepair      bool   `json:"canRepair"`
-	CanRemove      bool   `json:"canRemove"`
-	Destination    string `json:"destination"`
-	Target         string `json:"target"`
-	ExistingTarget string `json:"existingTarget"`
-	Message        string `json:"message"`
-	Warning        string `json:"warning"`
-	PathCommand    string `json:"pathCommand"`
+	Available         bool   `json:"available"`
+	Installed         bool   `json:"installed"`
+	AutoSetupDisabled bool   `json:"autoSetupDisabled"`
+	SetupError        string `json:"setupError"`
+	Destination       string `json:"destination"`
+	Target            string `json:"target"`
+	ExistingTarget    string `json:"existingTarget"`
+	Message           string `json:"message"`
+	PathCommand       string `json:"pathCommand"`
 }
 
 type Manager struct {
 	Home       string
 	Executable string
-	SystemLink string
 	// Roots and VerifyBundle are supplied by the platform adapter.
 	Roots        []string
 	VerifyBundle func(string) bool
@@ -62,151 +58,135 @@ func (m Manager) target() (string, error) {
 	return "", errors.New("Drag Midwing to /Applications or ~/Applications, eject the disk image, and launch the installed copy to set up the CLI")
 }
 
-func linkTarget(path string) string {
-	target, err := os.Readlink(path)
-	if err != nil {
-		return ""
-	}
-	if !filepath.IsAbs(target) {
-		target = filepath.Join(filepath.Dir(path), target)
-	}
-	return filepath.Clean(target)
-}
-
-func pointsTo(path, target string) bool {
-	if linkTarget(path) == "" {
-		return false
-	}
-	real, err := filepath.EvalSymlinks(path)
-	return err == nil && real == target
-}
-
-func (m Manager) owned(path string) bool {
-	target := linkTarget(path)
-	if target == "" {
-		return false
-	}
-	var record struct{ Target string }
-	data, err := os.ReadFile(m.record())
-	if err == nil && json.Unmarshal(data, &record) == nil && record.Target == target {
-		return true
-	}
-	bundle := filepath.Dir(filepath.Dir(filepath.Dir(target)))
-	return target == filepath.Join(bundle, "Contents", "MacOS", "midwing") &&
-		strings.HasSuffix(bundle, ".app") && m.VerifyBundle(bundle)
-}
+// ErrBusy means automatic startup setup yielded to another setup operation.
+var ErrBusy = errors.New("CLI setup is already running")
 
 func (m Manager) Status() (Status, error) {
-	s := Status{Destination: m.destination(), PathCommand: `export PATH="$HOME/.local/bin:$PATH"`}
-	target, err := m.target()
-	if err != nil {
-		s.Message = err.Error()
+	target, targetErr := m.target()
+	if targetErr != nil {
+		s, _ := m.status("", setupRecord{})
+		s.Message = targetErr.Error()
 		return s, nil
 	}
-	s.Available, s.Target = true, target
-	userCorrect, systemCorrect := pointsTo(s.Destination, target), pointsTo(m.SystemLink, target)
-	s.Installed = userCorrect || systemCorrect
-	if systemCorrect && !userCorrect {
-		s.PathCommand = `export PATH="/usr/local/bin:$PATH"`
-	}
-	info, err := os.Lstat(s.Destination)
-	if err != nil && !os.IsNotExist(err) {
-		return s, err
-	}
-	exists := err == nil
-	s.ExistingTarget = linkTarget(s.Destination)
-	s.CanRemove = exists && m.owned(s.Destination)
-	s.CanRepair = s.CanRemove && !userCorrect
-	s.CanInstall = !exists && !systemCorrect
-	switch {
-	case userCorrect:
-		s.Message = "CLI link is installed for this app. Verify command discovery in a fresh terminal."
-	case systemCorrect && !exists:
-		s.Message = "The existing /usr/local/bin/midwing link works with this app. No additional link is needed."
-	case s.CanRepair:
-		s.Message = "The user CLI link points to another Midwing location. Repair will replace that link with the current app's executable."
-	case exists:
-		s.Message = "An unrelated command occupies the user CLI destination. It has been preserved; move it yourself before installing."
-	default:
-		s.Message = "Install CLI to create a link to this app. No administrator access is needed for this step."
-	}
-	if exists && info.Mode()&os.ModeSymlink == 0 {
-		s.ExistingTarget = ""
-	}
-	if systemCorrect && exists && !userCorrect {
-		s.Warning = "The user command may shadow the working /usr/local/bin/midwing link. Run type -a midwing in a fresh terminal and review the first result."
-	}
-	if _, err := os.Lstat(m.SystemLink); err == nil && !systemCorrect {
-		s.Warning = "Another command exists at /usr/local/bin/midwing. It is preserved. Run type -a midwing in a fresh terminal and resolve old installations deliberately."
+	record, recordErr := m.readRecord()
+	s, err := m.status(target, record)
+	// Keep preferences and controls available when inspecting the link fails.
+	if recordErr != nil {
+		s.SetupError = recordErr.Error()
+	} else if err != nil {
+		s.SetupError = "Could not inspect CLI link: " + err.Error()
 	}
 	return s, nil
 }
 
-// Change serializes cooperating app instances; exclusive symlink creation and
-// checked removal also preserve commands created by another installer.
-func (m Manager) Change(action string) (Status, error) {
-	if _, err := m.target(); err != nil {
+func (m Manager) status(target string, record setupRecord) (Status, error) {
+	s := Status{Destination: m.destination(), AutoSetupDisabled: record.Disabled,
+		Available: target != "", Target: target, PathCommand: `export PATH="$HOME/.local/bin:$PATH"`}
+	if !s.Available {
+		return s, nil
+	}
+	s.ExistingTarget = linkTarget(s.Destination)
+	s.Installed = s.ExistingTarget == target
+	_, err := os.Lstat(s.Destination)
+	if err != nil && !os.IsNotExist(err) {
+		return s, err
+	}
+	switch {
+	case record.Disabled:
+		s.Message = "Automatic CLI setup is disabled."
+		if owned(s.ExistingTarget, target, record) {
+			s.SetupError = "The CLI link is still present. Retry setup to finish disabling the CLI."
+		}
+	case s.Installed:
+		s.Message = "CLI link installed. Check command discovery in your terminal."
+	case err == nil && !owned(s.ExistingTarget, target, record):
+		s.Message = "Another command occupies the CLI location. It has been preserved; move it before retrying setup."
+	default:
+		s.Message = "The CLI link needs setup. Retry to create or update it."
+	}
+	return s, nil
+}
+
+// TryEnsure sets up the CLI at startup without waiting for another operation.
+func (m Manager) TryEnsure() (Status, error) { return m.change("ensure", true) }
+
+// Change waits for cooperating app instances and installers before changing the CLI.
+func (m Manager) Change(action string) (Status, error) { return m.change(action, false) }
+
+func (m Manager) change(action string, nonblocking bool) (Status, error) {
+	if action != "ensure" && action != "enable" && action != "disable" {
+		return Status{}, fmt.Errorf("unknown CLI setup action %q", action)
+	}
+	target, err := m.target()
+	if err != nil {
 		return Status{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(m.record()), 0700); err != nil {
 		return Status{}, err
 	}
 	lock := flock.New(m.record() + ".lock")
-	if err := lock.Lock(); err != nil {
+	if nonblocking {
+		locked, err := lock.TryLock()
+		if err != nil {
+			return Status{}, err
+		}
+		if !locked {
+			return Status{}, ErrBusy
+		}
+	} else if err := lock.Lock(); err != nil {
 		return Status{}, err
 	}
 	defer lock.Unlock()
-	s, err := m.Status()
+	record, err := m.readRecord()
+	if err != nil {
+		return Status{}, err
+	}
+	if action != "ensure" {
+		record.Disabled = action == "disable"
+		// Persist the preference even if inspecting or changing the link fails.
+		if err := m.saveRecord(record); err != nil {
+			return Status{}, err
+		}
+	}
+	s, err := m.status(target, record)
 	if err != nil {
 		return s, err
 	}
-	switch action {
-	case "install":
-		if s.Installed {
-			return s, nil
+	if record.Disabled {
+		if owned(s.ExistingTarget, s.Target, record) {
+			if err := changeLink(s.Destination, "", s.ExistingTarget); err != nil {
+				return s, err
+			}
 		}
-		if !s.CanInstall {
-			return s, errors.New(s.Message)
-		}
-		if err = os.MkdirAll(filepath.Dir(s.Destination), 0755); err == nil {
-			err = os.Symlink(s.Target, s.Destination)
-		}
-	case "repair", "remove":
-		if !s.CanRemove {
-			return s, errors.New("Only a verified Midwing user link can be changed")
-		}
-		replacement := ""
-		if action == "repair" {
-			replacement = s.Target
-		}
-		err = changeLink(s.Destination, replacement, s.ExistingTarget)
-	default:
-		return s, fmt.Errorf("unknown CLI setup action %q", action)
+		return m.status(target, record)
 	}
-	if err != nil {
-		return s, err
-	}
-	if action != "remove" {
-		data, _ := json.Marshal(struct{ Target string }{s.Target})
-		if err := writeRecord(m.record(), data); err != nil {
-			return s, fmt.Errorf("CLI installed, but could not save move/repair information: %w", err)
+	if !s.Installed {
+		if err := m.ensureLink(s, record); err != nil {
+			return s, err
 		}
 	}
-	return m.Status()
+	if record.Target != s.Target {
+		record.Target = s.Target
+		if err := m.saveRecord(record); err != nil {
+			return s, fmt.Errorf("CLI installed, but could not save setup preferences: %w", err)
+		}
+	}
+	return m.status(target, record)
 }
 
-func writeRecord(path string, data []byte) error {
-	file, err := os.CreateTemp(filepath.Dir(path), ".cli-setup-*")
+func (m Manager) ensureLink(s Status, record setupRecord) error {
+	_, err := os.Lstat(s.Destination)
+	if os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(s.Destination), 0755); err != nil {
+			return err
+		}
+		return os.Symlink(s.Target, s.Destination)
+	}
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
-	if _, err = file.Write(data); err != nil {
-		file.Close()
-		return err
+	if !owned(s.ExistingTarget, s.Target, record) {
+		return errors.New(s.Message)
 	}
-	if err = file.Close(); err != nil {
-		return err
-	}
-	return os.Rename(file.Name(), path)
+	return changeLink(s.Destination, s.Target, s.ExistingTarget)
 }

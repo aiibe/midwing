@@ -60,3 +60,18 @@ func restoreCommand(backup, path string) error {
 	}
 	return os.Link(backup, path)
 }
+
+func linkTarget(path string) string {
+	target, err := os.Readlink(path)
+	if err != nil {
+		return ""
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(path), target)
+	}
+	return filepath.Clean(target)
+}
+
+func owned(existing, target string, record setupRecord) bool {
+	return existing != "" && (existing == target || existing == record.Target)
+}
