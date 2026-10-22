@@ -67,6 +67,16 @@ def installation_notes(version):
             "See [the installation guide](https://github.com/aiibe/midwing/blob/main/docs/INSTALL-macos.md) "
             "for migration, PATH, and removal."
         )
+    if version_parts(version) >= (0, 7, 0):
+        install_steps = (
+            "Open the DMG, drag Midwing to Applications, eject the image, and launch the installed app. "
+            "Midwing automatically creates `~/.local/bin/midwing`. Use **Enable CLI** to control setup "
+            "and **Retry setup** if it needs attention. Verify `type -a midwing` and `midwing --help` "
+            "in a fresh terminal. If needed, add `~/.local/bin` to PATH and restart terminals and "
+            "coding agents. Legacy PKG CLI links are no longer supported. Quit Midwing before "
+            "replacing the app; connections are preserved. See [the installation guide]"
+            "(https://github.com/aiibe/midwing/blob/main/docs/INSTALL-macos.md) for PATH and removal."
+        )
     return INSTALL_NOTES.format(signing_notice=notice, install_steps=install_steps)
 
 
