@@ -157,7 +157,7 @@ test('deferred background failure preserves saved change and recovery clears its
  h.setState({services: [sampleApi], connections: [{service: 'sample-api', permissions: ['profile']}]});
  h.window.dispatchEvent(new h.window.Event('focus'));
  await settle(); await settle();
- assert.equal(d.querySelector('#message').textContent, 'Sample API connected. Your tools can now call its API.');
+ assert.equal(d.querySelector('#message').textContent, 'Sample API connected.');
  assert.equal(d.querySelector('#message').className, 'success');
  // A new interaction clears the prior mutation outcome.
  d.querySelector('[data-tab="activity"]').click();

@@ -24,6 +24,8 @@ export function setupCustomServiceForm({isBusy, setBusy, selectService, showTab,
         document.querySelector('#custom-endpoints')!.append(row);
     }
     function openCustomForm() {
+        const search = document.querySelector<HTMLInputElement>('#service-search')!;
+        search.value = ''; search.dispatchEvent(new Event('input'));
         document.querySelector<HTMLFormElement>('#custom-form')!.reset();
         idEdited = false;
         document.querySelectorAll<HTMLDetailsElement>('#custom-form details').forEach(details => details.open = false);

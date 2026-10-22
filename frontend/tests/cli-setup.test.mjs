@@ -13,6 +13,42 @@ const disabled = {...ready, installed:false, autoSetupDisabled:true,
  message:'Automatic CLI setup is disabled.'};
 const missing = {...ready, installed:false, message:'The CLI link needs setup.'};
 
+test('CLI menu badge explains non-ready states from any screen and clears on recovery', async t => {
+ for (const [name, state, description] of [
+  ['missing', missing, /Set up the CLI/],
+  ['disabled', disabled, /CLI is disabled/],
+  ['unavailable', {...missing, available:false}, /unavailable in this build/],
+  ['failed setup', {...ready, setupError:'permission denied'}, /CLI setup failed/],
+ ]) {
+  await t.test(name, async t => {
+   const h = await setup(t, {CLISetupStatus: async () => state}); const d = h.window.document;
+   const badge = d.querySelector('#cli-warning');
+   const menu = d.querySelector('nav [data-tab="cli-setup"]');
+   assert.equal(d.querySelector('#connections').hidden, false);
+   assert.equal(badge.hidden, false);
+   assert.match(badge.title, description);
+   assert.equal(menu.getAttribute('aria-describedby'), 'cli-warning-text');
+   assert.equal(d.querySelector('#cli-warning-text').textContent, badge.title);
+   menu.click(); await settle();
+   assert.equal(d.querySelector('#cli-setup').hidden, false);
+   h.app.CLISetupStatus = async () => ready;
+   h.window.dispatchEvent(new h.window.Event('focus')); await settle();
+   assert.equal(badge.hidden, true);
+   assert.equal(menu.hasAttribute('aria-describedby'), false);
+  });
+ }
+});
+
+test('CLI status read failures show the menu badge until a successful refresh', async t => {
+ const h = await setup(t, {CLISetupStatus: async () => { throw Error('status unavailable'); }});
+ const badge = h.window.document.querySelector('#cli-warning');
+ assert.equal(badge.hidden, false);
+ assert.match(badge.title, /needs attention/);
+ h.app.CLISetupStatus = async () => ready;
+ h.window.dispatchEvent(new h.window.Event('focus')); await settle();
+ assert.equal(badge.hidden, true);
+});
+
 async function cli(t, state = ready) {
  const h = await setup(t, {CLISetupStatus: async () => structuredClone(state)});
  h.window.document.querySelector('[aria-label="CLI setup"]').click();
@@ -31,7 +67,7 @@ test('ready setup stays quiet and keeps terminal help and technical details coll
  assert.equal(d.querySelector('#cli-destination').textContent, ready.destination);
  assert.equal(d.querySelector('#cli-path').textContent, ready.pathCommand);
  for (const details of d.querySelectorAll('#cli-setup details')) assert.equal(details.open, false);
- assert.match(d.querySelector('#cli-controls').textContent, /cannot check your terminal's PATH/);
+ assert.equal(d.querySelector('#cli-setup').textContent.includes('App executable:'), false);
  assert.match(d.querySelector('#cli-controls').textContent, /Restart coding agents/);
 });
 
@@ -63,7 +99,6 @@ test('missing or moved links use the same retry action', async t => {
   assert.equal(d.querySelector('#cli-status').textContent, 'Needs attention');
   assert.equal(d.querySelector('#cli-notice').hidden, false);
   assert.equal(d.querySelector('#cli-retry').hidden, false);
-  assert.equal(d.querySelector('#cli-existing-row').hidden, !state.existingTarget);
   let action;
   h.app.ChangeCLISetup = async value => { action = value; return ready; };
   d.querySelector('#cli-retry').click(); await settle();

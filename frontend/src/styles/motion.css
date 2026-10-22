@@ -1,0 +1,45 @@
+:root { --motion-ease: cubic-bezier(.2, .7, .2, 1); }
+
+/* One shared selection surface moves between navigation items. */
+nav { position: relative; isolation: isolate; }
+nav::before {
+    content: ''; position: absolute; inset: 0 0 auto; height: var(--nav-row-height);
+    border: 1px solid var(--border); border-radius: var(--nav-row-radius); background: var(--surface);
+    box-shadow: 0 2px 6px #17214407; pointer-events: none; z-index: -1;
+    transform: translateY(calc(var(--selected-row, 0) * (var(--nav-row-height) + var(--nav-row-gap))));
+    transition: transform 230ms var(--motion-ease);
+}
+
+/* Keep movement small and leave controls immediately usable. */
+main > section:not([hidden]) > .page-heading { animation: content-in 160ms ease-out; }
+main > section:not([hidden]) > :is(.connections-layout, .page-body) { animation: content-in 220ms var(--motion-ease); }
+:is(#connection-note, .permission-editor):not([hidden]) { animation: content-in 180ms var(--motion-ease); }
+:is(.form-options, .endpoint-options, .cli-help)[open] > :not(summary) { animation: content-in 180ms var(--motion-ease); }
+.service-actions[open] .service-actions-menu { transform-origin: top right; animation: popover-in 160ms var(--motion-ease); }
+#delete-confirm[open] { animation: popover-in 200ms var(--motion-ease); }
+#delete-confirm[open]::backdrop { animation: fade-in 160ms ease-out; }
+#message:not(:empty), #cli-warning:not([hidden]) { animation: content-in 180ms var(--motion-ease); }
+
+button, .service-actions summary {
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease,
+        box-shadow 150ms ease, transform 120ms var(--motion-ease);
+}
+:is(.primary, .secondary, .danger, .destructive):not(:disabled):active,
+.service-actions summary:active { transform: translateY(1px) scale(.98); }
+#services button { transition: none; transform: none; }
+nav button:not(:disabled):active > [data-icon] { transform: scale(.9); }
+nav button > [data-icon] { transition: color 150ms ease, transform 120ms var(--motion-ease); }
+input:not([type=checkbox]), select, textarea { transition: border-color 150ms ease, box-shadow 150ms ease; }
+input[type=checkbox]:not(#cli-enabled):not(:disabled):active { transform: scale(.9); }
+input[type=checkbox] { transition: transform 120ms var(--motion-ease); }
+#cli-enabled::after { transition: transform 200ms var(--motion-ease); }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes content-in {
+    from { transform: translateY(5px); }
+    to { transform: translateY(0); }
+}
+@keyframes popover-in {
+    from { opacity: .7; transform: translateY(-3px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}

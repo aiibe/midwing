@@ -2,6 +2,35 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {sampleApi, custom, settle, setup} from './helpers.mjs';
 
+test('reselecting the current service keeps credential and permission edits', async t => {
+ const h = await setup(t); const d = h.window.document;
+ d.querySelector('#token').value = 'unsaved-token';
+ const permission = d.querySelector('[value="repos"]');
+ permission.checked = false;
+ permission.dispatchEvent(new h.window.Event('change', {bubbles:true}));
+ d.querySelector('#services .active-service').click();
+ assert.equal(d.querySelector('#token').value, 'unsaved-token');
+ assert.equal(d.querySelector('[value="repos"]').checked, false);
+});
+
+test('connection mutations preserve disabled fields in the hidden custom form', async t => {
+ const h = await setup(t); const d = h.window.document;
+ h.app.SaveConnection = async () => ({});
+ d.querySelector('#token').value = 'token';
+ d.querySelector('#form').dispatchEvent(new h.window.Event('submit', {bubbles:true,cancelable:true}));
+ await settle(); await settle(); await settle();
+ assert.equal(d.querySelector('#custom-login-path').disabled, true);
+});
+
+test('removing the final service clears hidden credential drafts', async t => {
+ const h = await setup(t); const d = h.window.document;
+ d.querySelector('#token').value = 'unsaved-token';
+ h.setState({services:[],connections:[]}); h.emit(); await settle(); await settle();
+ assert.equal(d.querySelector('#custom').hidden, false);
+ assert.equal(d.querySelector('#token').value, '');
+ assert.equal(d.querySelector('#token').disabled, true);
+});
+
 test('custom service creation uses generated bindings for token and password definitions', async t => {
  for (const authKind of ['token', 'password']) {
   await t.test(authKind, async t => {

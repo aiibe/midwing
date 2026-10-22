@@ -26,7 +26,7 @@
 ## Releases
 
 - Version by scope: patch for fixes, minor for new capabilities (including `0.x`); assess compatibility before tagging.
-- Record notable changes in `CHANGELOG.md` under `Unreleased` as part of each change; focus on user-visible changes.
+- Record notable user-visible changes in `CHANGELOG.md` under `Unreleased`; group related changes and omit minor UI details and implementation notes.
 - Follow [the release process](README.md#release-a-version); keep changelog releases newest first.
 - When completing a new release, review and publish the GitHub draft created by CI, then verify the release is public.
 - For release tooling changes, run `python3 -m unittest discover -s scripts -p 'test_*.py'` and validate `.github/workflows/macos.yml` with actionlint.

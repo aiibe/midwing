@@ -10,27 +10,40 @@ export function setupCLI() {
     const enabled = section.querySelector<HTMLInputElement>('#cli-enabled')!;
     const retry = section.querySelector<HTMLButtonElement>('#cli-retry')!;
     const notice = document.querySelector<HTMLButtonElement>('#cli-notice')!;
+    const warning = document.querySelector<HTMLElement>('#cli-warning')!;
+    const menuItem = warning.closest('button')!;
     let busy = false;
     let refreshPending = false;
     let current: clisetup.Status | undefined;
+
+    function setWarning(reason = '') {
+        warning.hidden = !reason;
+        warning.title = reason;
+        document.querySelector('#cli-warning-text')!.textContent = reason;
+        if (reason) menuItem.setAttribute('aria-describedby', 'cli-warning-text');
+        else menuItem.removeAttribute('aria-describedby');
+    }
 
     function render(next: clisetup.Status) {
         current = next;
         const attention = !!next.setupError || (next.autoSetupDisabled ? next.installed : !next.installed);
         status.textContent = !next.available ? 'Unavailable' : attention ? 'Needs attention'
             : next.autoSetupDisabled ? 'Disabled' : 'Ready';
-        message.textContent = next.setupError ? 'CLI setup failed. Open Details or retry setup.' : next.message;
+        message.textContent = next.setupError ? 'CLI setup failed. Try again.'
+            : next.installed && !next.autoSetupDisabled ? 'CLI installed.' : next.message;
         section.querySelector<HTMLElement>('#cli-controls')!.hidden = !next.available;
         enabled.checked = !next.autoSetupDisabled;
         section.querySelector<HTMLElement>('#cli-destination')!.textContent = next.destination;
-        section.querySelector<HTMLElement>('#cli-target')!.textContent = next.target;
         section.querySelector<HTMLElement>('#cli-path')!.textContent = next.pathCommand;
-        section.querySelector<HTMLElement>('#cli-existing-row')!.hidden = !next.existingTarget;
-        section.querySelector<HTMLElement>('#cli-existing')!.textContent = next.existingTarget;
         error.textContent = next.setupError;
+        error.hidden = !next.setupError;
         retry.hidden = !next.available || !attention;
         notice.hidden = !next.available || !attention;
         notice.textContent = 'CLI needs attention';
+        setWarning(!next.available ? 'CLI setup is unavailable in this build. Use the installed macOS app to set it up.'
+            : next.setupError ? 'CLI setup failed. Open CLI setup to fix it.'
+            : next.autoSetupDisabled ? 'CLI is disabled. Enable it so assistants can use Midwing.'
+            : !next.installed ? 'Set up the CLI so assistants can use Midwing.' : '');
     }
 
     async function read(action?: string) {
@@ -40,6 +53,7 @@ export function setupCLI() {
         }
         if (!('go' in window)) {
             status.textContent = 'Unavailable';
+            setWarning('Open the desktop app to set up the CLI.');
             return;
         }
         busy = true;
@@ -53,11 +67,13 @@ export function setupCLI() {
             }
             enabled.checked = current ? !current.autoSetupDisabled : false;
             status.textContent = 'Needs attention';
-            message.textContent = 'Could not complete CLI setup. Open Details or retry setup.';
+            message.textContent = 'Could not complete CLI setup. Try again.';
             error.textContent = String(e);
+            error.hidden = false;
             retry.hidden = false;
             notice.hidden = false;
             notice.textContent = 'CLI needs attention';
+            setWarning('CLI setup needs attention. Open CLI setup to retry.');
         } finally {
             busy = false;
             enabled.disabled = !current?.available;

@@ -4,12 +4,20 @@
 
 ### Changed
 
+- Refresh the desktop interface with compact layouts, native translucency, clearer connection settings, and simpler CLI setup.
+
 - Automatically create or update `~/.local/bin/midwing` when the installed macOS app launches. Preserve unrelated commands and respect the saved CLI opt-out, including when setup needs a retry.
-- Simplify CLI setup to a link status, Enable CLI preference, and one retry action. Keep terminal PATH help and copy buttons available, with technical errors under Details and sidebar notices only when setup needs attention.
+- Simplify CLI setup to a link status, Enable CLI preference, and one retry action. Keep terminal PATH help and copy buttons available, shorten setup text, and remove the technical Details section. Show errors and sidebar notices only when setup needs attention.
 - Use the same CLI setup for source installations in `~/Applications`. Custom installation directories and legacy PKG CLI links are no longer supported; this installation model replaces earlier release behavior without migration support.
+
+### Added
+
+- Service search, keyboard shortcuts, and interface animations with reduced-motion support.
+- CLI setup warning badge and a development browser preview.
 
 ### Fixed
 
+- Improve keyboard focus, service selection, credential drafts, and light and dark appearance.
 - Wait for active CLI setup operations when retrying manually or installing from source; keep app startup nonblocking.
 - Keep the CLI opt-out and setup controls available when inspecting or removing the link fails. Keep a successfully installed app available for retry if source CLI setup fails.
 

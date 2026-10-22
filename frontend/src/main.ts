@@ -6,14 +6,26 @@ import { setupCustomServiceForm } from './custom-service-form';
 import { setupActivity } from './activity';
 import { setupPermissionDescriptions, permissionPath, defaultPermissionDescription } from './permission-descriptions';
 import './style.css';
+import { setupIcons } from './icons';
+import { setupServiceLibrary } from './service-library';
+import { pages, setupNavigation } from './navigation';
+import { setupPreview } from './preview';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import * as app from '../wailsjs/go/main/App';
 import { midwing } from '../wailsjs/go/models';
 type Service = midwing.DesktopService;
 type Connection = midwing.DesktopConnection;
 
+const preview = import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && !('go' in window);
+if (preview) {
+    setupPreview();
+}
+
 const root = document.querySelector<HTMLDivElement>('#app')!;
 root.innerHTML = template;
+setupIcons();
+root.classList.toggle('desktop', !!(window as Window & {runtime?: unknown}).runtime && !preview);
+document.querySelector<HTMLElement>('#preview-label')!.hidden = !preview;
 const desktopAvailable = () => !!(window as Window & {go?: unknown}).go;
 let savedChange = '';
 let savedWarning = '';
@@ -39,6 +51,10 @@ let busy = false;
 let permissionsDirty = false;
 let reconnecting = false;
 document.querySelector('#permissions')!.addEventListener('change', event => { if ((event.target as HTMLInputElement).name === 'permission') { permissionsDirty = true; updatePermissionCount(); } });
+const renderLibrary = setupServiceLibrary(id => {
+    if (id === selected && document.getElementById('custom')!.hidden) return;
+    selected = id; showTab('connections', false); renderService();
+});
 const current = () => services.find(s => s.id === selected)!;
 const currentConnection = () => connections.find(connection => connection.service === selected);
 const addInlineDescription = setupPermissionDescriptions({isBusy: () => busy, setBusy, reloadAfterChange});
@@ -50,10 +66,9 @@ function updatePermissionCount() {
 }
 function syncCredentialFields(clear = false) {
     const service = current();
-    if (!service) return;
-    const password = service.authKind === 'password';
+    const password = service?.authKind === 'password';
     const connected = !!currentConnection();
-    const editing = !connected || reconnecting;
+    const editing = !!service && (!connected || reconnecting);
     document.querySelector<HTMLDivElement>('#password-fields')!.hidden = !password || !editing;
     document.querySelector<HTMLDivElement>('#token-fields')!.hidden = password || !editing;
     for (const id of ['token', 'email', 'password']) {
@@ -63,20 +78,21 @@ function syncCredentialFields(clear = false) {
         input.required = active;
         input.disabled = busy || !active;
     }
+    document.querySelector<HTMLElement>('#connection-note')!.hidden = !reconnecting;
     document.querySelector<HTMLButtonElement>('#reconnect')!.hidden = !connected || reconnecting;
     document.querySelector<HTMLButtonElement>('#cancel-reconnect')!.hidden = !connected || !reconnecting;
     document.querySelector<HTMLButtonElement>('#save-connection')!.hidden = !editing;
-    document.querySelector('#save-connection')!.textContent = connected ? 'Reconnect' : 'Save connection';
+    document.querySelector('#save-connection')!.textContent = connected ? 'Reconnect' : 'Connect service';
     document.querySelector('#permissions')!.classList.toggle('permissions-readonly', !editing);
     document.querySelectorAll<HTMLInputElement>('[name="permission"]').forEach(input => { input.disabled = busy || !editing; });
 }
 function renderService(preserveEdits = false) {
     if (!preserveEdits) { permissionsDirty = false; reconnecting = false; }
     const service = current();
-    renderServiceLibrary();
+    renderLibrary(services, connections, selected, busy);
     syncServiceVisibility();
     deleteDialog.close();
-    if (!service) return;
+    if (!service) { syncCredentialFields(true); return; }
     const conn = currentConnection();
     document.querySelector<HTMLButtonElement>('#delete-service')!.hidden = !service.custom;
     document.querySelector('#service-name')!.textContent = service.name;
@@ -121,25 +137,6 @@ function syncServiceVisibility(custom = !document.getElementById('custom')!.hidd
     document.getElementById('custom')!.hidden = !custom;
     document.getElementById('service-content')!.hidden = custom || !services.length;
 }
-function renderServiceLibrary() {
-    const connectedServices = new Set(connections.map(connection => connection.service));
-    document.querySelector('#connection-count')!.textContent = `${services.filter(item => connectedServices.has(item.id)).length} connected`;
-    document.querySelector('#service-count')!.textContent = String(services.length);
-    const tabs = document.querySelector('#services')!; tabs.replaceChildren();
-    for (const item of services) {
-        const button = document.createElement('button'); button.type = 'button';
-        button.className = 'secondary' + (item.id === selected ? ' active-service' : '');
-        button.setAttribute('aria-pressed', String(item.id === selected));
-        const connected = connectedServices.has(item.id);
-        button.setAttribute('aria-label', `${item.name}, ${connected ? 'connected' : 'not connected'}`);
-        const info = document.createElement('span'); info.className = 'service-info';
-        const name = document.createElement('span'); name.className = 'service-title'; name.textContent = item.name;
-        const status = document.createElement('span'); status.className = 'service-status' + (connected ? ' is-connected' : ''); status.textContent = connected ? 'Connected' : 'Not connected';
-        info.append(name, status); button.append(info); button.disabled = busy;
-        button.addEventListener('click', () => { selected = item.id; showTab('connections', false); renderService(); });
-        tabs.append(button);
-    }
-}
 async function readSettings(background: boolean, preserveEdits: boolean) {
     if (!desktopAvailable()) { message('Open the desktop app to manage connections.', true); return; }
     const next = await app.State();
@@ -169,7 +166,7 @@ window.addEventListener('beforeunload', () => stopSettingsListener?.());
 function setBusy(value: boolean) {
     busy = value;
     if (!value) settingsRefresh.resume();
-    document.querySelectorAll<HTMLButtonElement | HTMLInputElement>('#connections button, #connections input').forEach(el => el.disabled = value);
+    document.querySelectorAll<HTMLButtonElement | HTMLInputElement>('#service-content button, #service-content input, #add-service, #service-search, #services button').forEach(el => el.disabled = value);
     syncCredentialFields();
 }
 async function reloadAfterChange(success: string, warning = '', preserveEdits = false): Promise<boolean> {
@@ -207,7 +204,7 @@ document.querySelector('#form')!.addEventListener('submit', async e => {
         () => service.authKind === 'password'
             ? app.ConnectPassword(service.id, service.revision, email, password, permissions)
             : app.SaveConnection(service.id, service.revision, token, permissions),
-        `${service.name} connected. Your tools can now call its API.`,
+        `${service.name} connected.`,
         service.authKind === 'password' ? 'Signing in…' : 'Saving connection…',
     );
 });
@@ -245,10 +242,14 @@ document.querySelector('#confirm-delete')!.addEventListener('click', async () =>
 });
 function showTab(tab: string, refresh = true) {
     const activeTab = tab === 'custom' ? 'connections' : tab;
-    for (const id of ['connections', 'activity', 'cli-setup']) document.getElementById(id)!.hidden = id !== activeTab;
+    document.querySelector('nav')!.style.setProperty('--selected-row', String(pages.indexOf(activeTab)));
+    for (const id of pages) document.getElementById(id)!.hidden = id !== activeTab;
     document.getElementById('custom')!.hidden = tab !== 'custom';
     syncServiceVisibility(tab === 'custom');
-    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(el => el.classList.toggle('selected', el.dataset.tab === activeTab));
+    document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(el => {
+        el.classList.toggle('selected', el.dataset.tab === activeTab);
+        if (el.dataset.tab === activeTab) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+    });
     message('');
     if (tab === 'connections' && refresh) refreshSettings();
     if (tab === 'activity') void history();
@@ -263,10 +264,10 @@ const openCustomForm = setupCustomServiceForm({
 });
 const history = setupActivity(message);
 
+setupNavigation(showTab, openCustomForm, () => busy);
 document.querySelector('#add-service')!.addEventListener('click', openCustomForm);
 document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.addEventListener('click', () => showTab(button.dataset.tab!)));
 void load().catch(e => message(String(e), true));
-
 
 setupUpdates();
 const refreshCLI = setupCLI();

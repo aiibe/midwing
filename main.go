@@ -9,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"io"
 	"midwing/internal/midwing"
@@ -146,7 +147,13 @@ func run(args []string) error {
 		return runCLI(args, store, os.Stdout)
 	}
 	app := &App{store: store, updates: newUpdateChecker()}
-	return wails.Run(&options.App{OnStartup: app.startup, OnShutdown: app.shutdown, Title: "Midwing", Width: 1080, Height: 760, MinWidth: 780, MinHeight: 600, BackgroundColour: &options.RGBA{R: 14, G: 17, B: 23, A: 255}, AssetServer: &assetserver.Options{Assets: assets}, Bind: []interface{}{app}})
+	return wails.Run(&options.App{
+		OnStartup: app.startup, OnShutdown: app.shutdown, Title: "Midwing",
+		Width: 1160, Height: 780, MinWidth: 780, MinHeight: 600,
+		BackgroundColour: &options.RGBA{R: 247, G: 247, B: 249, A: 255},
+		Mac:              &mac.Options{TitleBar: mac.TitleBarHiddenInset(), WebviewIsTransparent: true, WindowIsTranslucent: true},
+		AssetServer:      &assetserver.Options{Assets: assets}, Bind: []interface{}{app},
+	})
 }
 
 func main() {
