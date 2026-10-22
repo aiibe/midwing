@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Use the current native window appearance on macOS Tahoe in distributed builds, matching the development preview.
+
 ## [0.7.0](https://github.com/aiibe/midwing/releases/tag/v0.7.0) — 2026-10-22
 
 ### Changed

@@ -12,9 +12,20 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7
+      - name: Verify macOS SDK
+        run: |
+          xcodebuild -version
+          sdk_version=$(xcrun --sdk macosx --show-sdk-version)
+          echo "macOS SDK: $sdk_version"
+          case "$sdk_version" in
+            26.*) ;;
+            *) echo "Expected macOS SDK 26 for the native window appearance" >&2; exit 1 ;;
+          esac
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod

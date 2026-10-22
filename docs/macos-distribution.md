@@ -17,6 +17,10 @@ and [notarization workflow](https://developer.apple.com/documentation/security/c
 
 ## Local packaging
 
+Use Xcode 26 with a macOS 26 SDK so the native window appearance matches the
+development preview on macOS Tahoe. CI selects Xcode 26.2 explicitly; the app
+still targets macOS 13 and includes both Intel and Apple silicon builds.
+
 Install your **Developer ID Application** certificate and private key. Check with
 `security find-identity -v -p basic`. Packaging selects it when exactly one is
 available; otherwise set `SIGNING_IDENTITY` to its full name.
