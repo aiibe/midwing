@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.7.0](https://github.com/aiibe/midwing/releases/tag/v0.7.0) — 2026-10-22
+
 ### Changed
 
 - Refresh the desktop interface with compact layouts, native translucency, clearer connection settings, and simpler CLI setup.
